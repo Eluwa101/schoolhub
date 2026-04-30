@@ -76,7 +76,7 @@ async function toggleUserActive(id, schoolId) {
 async function getTeachersBySchool(schoolId) {
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, first_name, last_name, email:id')
+    .select('id, first_name, last_name')
     .eq('school_id', schoolId)
     .eq('role', 'teacher')
     .eq('is_active', true)

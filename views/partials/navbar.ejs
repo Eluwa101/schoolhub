@@ -21,8 +21,9 @@
 
     <!-- Right side -->
     <div class="flex items-center gap-3">
-      <!-- Messages indicator -->
-      <a href="/<%= ['teacher','parent'].includes(currentUser.role) ? currentUser.role : 'admin' %>/messages"
+      <!-- Messages indicator (teacher and parent only) -->
+      <% if (['teacher', 'parent'].includes(currentUser.role)) { %>
+      <a href="/<%= currentUser.role %>/messages"
          class="relative p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md"
          id="msg-bell">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,6 +31,7 @@
         </svg>
         <span id="unread-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">0</span>
       </a>
+      <% } %>
 
       <!-- User menu -->
       <div class="relative" id="user-menu-wrapper">
@@ -38,7 +40,7 @@
             <img src="<%= currentUser.avatarUrl %>" alt="avatar" class="w-8 h-8 rounded-full object-cover" />
           <% } else { %>
             <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-              <span class="text-indigo-700 font-semibold text-sm"><%= currentUser.firstName[0] %></span>
+              <span class="text-indigo-700 font-semibold text-sm"><%= currentUser.firstName ? currentUser.firstName[0] : '?' %></span>
             </div>
           <% } %>
           <div class="hidden md:block text-left">

@@ -4,7 +4,7 @@ const { getSchoolById, updateSchool, getSchoolStats } = require('../models/schoo
 const { getProfilesBySchool, toggleUserActive: toggleActiveModel } = require('../models/userModel');
 const { getClassesBySchool, createClass, updateClass, deleteClass, getStudentsInClass, enrollStudent } = require('../models/classModel');
 const { getSubjectsBySchool, createSubject, updateSubject, deleteSubject, assignSubjectToClass } = require('../models/subjectModel');
-const { getAnnouncements, createAnnouncement, deleteAnnouncement } = require('../models/announcementModel');
+const { getAnnouncements: fetchAnnouncements, createAnnouncement, deleteAnnouncement } = require('../models/announcementModel');
 const { getAuditLogs } = require('../models/auditModel');
 const { getSchoolAttendanceStats } = require('../models/attendanceModel');
 const { createInviteToken } = require('../utils/inviteToken');
@@ -78,7 +78,7 @@ async function getUsers(req, res, next) {
       total,
       page,
       totalPages: Math.ceil(total / 20),
-      currentRole: role,
+      currentRole: role || '',
     });
   } catch (err) {
     next(err);
@@ -344,7 +344,7 @@ async function deleteTimetableEntry(req, res, next) {
 async function getAnnouncements(req, res, next) {
   try {
     const page = parseInt(req.query.page) || 1;
-    const { announcements, total } = await getAnnouncements(req.schoolId, { page });
+    const { announcements, total } = await fetchAnnouncements(req.schoolId, { page });
     const { classes } = await getClassesBySchool(req.schoolId);
     res.render('admin/announcements', {
       title: 'Announcements',
@@ -455,7 +455,7 @@ module.exports = {
   postSettings,
   getUsers,
   postInviteUser,
-  toggleUserActive,
+  toggleUserActive: toggleUserActiveHandler,
   getClasses,
   postCreateClass,
   putClass,

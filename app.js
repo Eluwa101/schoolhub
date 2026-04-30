@@ -11,7 +11,7 @@ const helmet = require('helmet');
 const methodOverride = require('method-override');
 
 const { attachTenant } = require('./middleware/tenantMiddleware');
-const { helpers } = require('./utils/helpers');
+const helpers = require('./utils/helpers');
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -54,22 +54,15 @@ app.use(methodOverride('_method'));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session store — use pg store when DB URL configured, else memory store for dev
-let sessionStore;
+// Session store — pg when DB URL is real, memory store for local dev
 const dbUrl = process.env.SUPABASE_DB_URL;
-if (dbUrl && !dbUrl.includes('placeholder')) {
-  sessionStore = new PgSession({
-    conString: dbUrl,
-    tableName: 'session',
-    createTableIfMissing: false,
-  });
-} else {
-  // In-memory store for development without a real Supabase connection
-  const session = require('express-session');
-  sessionStore = new session.MemoryStore();
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn('[dev] Using in-memory session store. Configure SUPABASE_DB_URL for production.');
-  }
+const usePgStore = dbUrl && !dbUrl.includes('placeholder') && dbUrl.length > 50;
+const sessionStore = usePgStore
+  ? new PgSession({ conString: dbUrl, tableName: 'session', createTableIfMissing: false })
+  : new session.MemoryStore();
+
+if (!usePgStore && process.env.NODE_ENV !== 'test') {
+  console.warn('[dev] Using in-memory session store — run migrations and set SUPABASE_DB_URL for persistence.');
 }
 
 app.use(session({
@@ -101,12 +94,13 @@ app.use((req, res, next) => {
   res.locals.success = req.flash('success');
   res.locals.error = req.flash('error');
   res.locals.info = req.flash('info');
-  res.locals.formatDate = require('./utils/helpers').formatDate;
-  res.locals.formatDateTime = require('./utils/helpers').formatDateTime;
-  res.locals.formatTime = require('./utils/helpers').formatTime;
-  res.locals.dayName = require('./utils/helpers').dayName;
-  res.locals.letterGrade = require('./utils/helpers').letterGrade;
-  res.locals.truncate = require('./utils/helpers').truncate;
+  res.locals.currentPath = req.path;
+  res.locals.formatDate = helpers.formatDate;
+  res.locals.formatDateTime = helpers.formatDateTime;
+  res.locals.formatTime = helpers.formatTime;
+  res.locals.dayName = helpers.dayName;
+  res.locals.letterGrade = helpers.letterGrade;
+  res.locals.truncate = helpers.truncate;
   res.locals.appUrl = process.env.APP_URL || 'http://localhost:3000';
   next();
 });

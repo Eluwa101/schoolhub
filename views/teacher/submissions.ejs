@@ -1,0 +1,65 @@
+<%- include('../partials/header') %>
+
+<div class="mb-6 bg-blue-50 border border-blue-100 rounded-xl p-6">
+  <h2 class="font-semibold text-blue-900"><%= assignment.title %></h2>
+  <p class="text-sm text-blue-600 mt-1"><%= assignment.classes?.name %> · <%= assignment.subjects?.name %> · Due: <%= formatDate(assignment.due_date) %></p>
+  <% if (assignment.description) { %><p class="text-sm text-blue-700 mt-2"><%= assignment.description %></p><% } %>
+  <% if (assignment.file_url) { %>
+    <a href="<%= assignment.file_url %>" target="_blank" class="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:underline">
+      📎 View Assignment File
+    </a>
+  <% } %>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+    <h2 class="font-semibold text-gray-900">Submissions (<%= submissions.length %>)</h2>
+  </div>
+  <% if (submissions && submissions.length) { %>
+    <div class="divide-y divide-gray-100">
+      <% submissions.forEach(sub => { %>
+        <div class="p-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="font-medium text-gray-900"><%= sub.student?.first_name %> <%= sub.student?.last_name %></p>
+              <p class="text-xs text-gray-400 mt-0.5">Submitted: <%= formatDateTime(sub.submitted_at) %></p>
+              <% if (sub.notes) { %><p class="text-sm text-gray-600 mt-1"><%= sub.notes %></p><% } %>
+              <% if (sub.file_url) { %>
+                <a href="<%= sub.file_url %>" target="_blank" class="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline">📎 Download submission</a>
+              <% } %>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <% if (sub.score !== null && sub.score !== undefined) { %>
+                <span class="inline-block bg-green-100 text-green-700 text-sm font-bold px-3 py-1 rounded-lg">
+                  <%= sub.score %>/<%= assignment.max_score %> (<%= letterGrade(Math.round(sub.score/assignment.max_score*100)) %>)
+                </span>
+                <% if (sub.feedback) { %><p class="text-xs text-gray-500 mt-1 max-w-xs text-right">Feedback: <%= sub.feedback %></p><% } %>
+              <% } else { %>
+                <span class="text-xs text-gray-400">Not graded</span>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Grade form -->
+          <form method="POST" action="/teacher/assignments/<%= assignment.id %>/grade/<%= sub.student_id %>" class="mt-4 flex gap-3 items-end">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Score (max <%= assignment.max_score %>)</label>
+              <input type="number" name="score" value="<%= sub.score || '' %>" min="0" max="<%= assignment.max_score %>" step="0.5"
+                     class="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-700 mb-1">Feedback</label>
+              <input type="text" name="feedback" value="<%= sub.feedback || '' %>" placeholder="Optional feedback"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
+              <%= sub.score !== null && sub.score !== undefined ? 'Update' : 'Grade' %>
+            </button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <p class="text-center py-12 text-gray-400">No submissions yet.</p>
+  <% } %>
+</div>

@@ -1,0 +1,73 @@
+<%- include('../partials/header') %>
+
+<div class="max-w-2xl">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+    <form method="POST" action="/admin/settings" enctype="multipart/form-data" class="space-y-6">
+      <!-- Logo -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-3">School Logo</label>
+        <div class="flex items-center gap-4">
+          <% if (school.logo_url) { %>
+            <img src="<%= school.logo_url %>" alt="logo" class="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+          <% } else { %>
+            <div class="w-16 h-16 rounded-xl bg-indigo-100 flex items-center justify-center">
+              <span class="text-indigo-600 font-bold text-xl"><%= school.name[0] %></span>
+            </div>
+          <% } %>
+          <input type="file" name="logo" accept="image/*"
+                 class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">School Name</label>
+        <input type="text" name="name" value="<%= school.name %>" required
+               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <input type="tel" name="phone" value="<%= school.phone || '' %>"
+                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" name="email" value="<%= school.email || '' %>"
+                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
+        <input type="url" name="website" value="<%= school.website || '' %>" placeholder="https://"
+               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+        <textarea name="address" rows="2"
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"><%= school.address || '' %></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Term Start</label>
+          <input type="date" name="termStart" value="<%= school.term_start || '' %>"
+                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Term End</label>
+          <input type="date" name="termEnd" value="<%= school.term_end || '' %>"
+                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="submit" class="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition text-sm">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

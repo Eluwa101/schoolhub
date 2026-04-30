@@ -1,0 +1,71 @@
+<%- include('../partials/header') %>
+
+<div class="flex items-center justify-between mb-6">
+  <div class="flex gap-2">
+    <a href="/parent/messages?tab=inbox" class="px-4 py-2 rounded-lg text-sm font-medium <%= tab === 'inbox' || !tab ? 'bg-orange-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50' %>">Inbox</a>
+    <a href="/parent/messages?tab=sent" class="px-4 py-2 rounded-lg text-sm font-medium <%= tab === 'sent' ? 'bg-orange-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50' %>">Sent</a>
+  </div>
+  <button onclick="document.getElementById('compose-modal').classList.remove('hidden')"
+          class="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg hover:bg-orange-700">
+    Compose
+  </button>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+  <% if (messages && messages.length) { %>
+    <% messages.forEach(msg => { %>
+      <div class="flex items-start gap-4 p-5 hover:bg-gray-50 transition <%= !msg.is_read && tab !== 'sent' ? 'bg-orange-50/40' : '' %>">
+        <div class="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+          <span class="text-sm font-semibold text-orange-700">
+            <%= tab === 'sent' ? (msg.recipient?.first_name[0] || '?') : (msg.sender?.first_name[0] || '?') %>
+          </span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-sm font-semibold text-gray-900 truncate">
+              <%= tab === 'sent' ? `To: ${msg.recipient?.first_name} ${msg.recipient?.last_name}` : `${msg.sender?.first_name} ${msg.sender?.last_name}` %>
+            </p>
+            <span class="text-xs text-gray-400 flex-shrink-0"><%= formatDateTime(msg.created_at) %></span>
+          </div>
+          <p class="text-sm font-medium text-gray-800"><%= msg.subject %></p>
+          <p class="text-xs text-gray-500 truncate"><%= truncate(msg.body, 100) %></p>
+        </div>
+      </div>
+    <% }) %>
+  <% } else { %>
+    <p class="text-center py-12 text-gray-400">No messages</p>
+  <% } %>
+</div>
+
+<!-- Compose Modal -->
+<div id="compose-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg m-4">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-bold">Message a Teacher</h2>
+      <button onclick="document.getElementById('compose-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">✕</button>
+    </div>
+    <form method="POST" action="/parent/messages" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">To (Teacher)</label>
+        <select name="recipientId" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+          <option value="">Select a teacher</option>
+          <% teachers.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.first_name %> <%= t.last_name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+        <input type="text" name="subject" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+        <textarea name="body" rows="4" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"></textarea>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('compose-modal').classList.add('hidden')" class="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm">Cancel</button>
+        <button type="submit" class="flex-1 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-semibold">Send</button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,109 @@
+<%- include('../partials/header') %>
+
+<div class="flex justify-end mb-6 gap-3">
+  <button onclick="document.getElementById('assign-modal').classList.remove('hidden')"
+          class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition">
+    Assign to Class
+  </button>
+  <button onclick="document.getElementById('add-subject-modal').classList.remove('hidden')"
+          class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+    New Subject
+  </button>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <table class="min-w-full divide-y divide-gray-100">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Subject</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Code</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Description</th>
+        <th class="px-6 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      <% if (subjects && subjects.length) { %>
+        <% subjects.forEach(sub => { %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 font-medium text-gray-900"><%= sub.name %></td>
+            <td class="px-6 py-4 text-sm text-gray-500"><span class="font-mono bg-gray-100 px-2 py-0.5 rounded text-xs"><%= sub.code || '—' %></span></td>
+            <td class="px-6 py-4 text-sm text-gray-500"><%= truncate(sub.description, 80) || '—' %></td>
+            <td class="px-6 py-4 text-right">
+              <form method="POST" action="/admin/subjects/<%= sub.id %>?_method=DELETE" class="inline">
+                <button type="submit" onclick="return confirm('Delete subject?')" class="text-xs text-red-500 hover:text-red-700">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="4" class="text-center py-12 text-gray-400">No subjects yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Add Subject Modal -->
+<div id="add-subject-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md m-4">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-bold">New Subject</h2>
+      <button onclick="document.getElementById('add-subject-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">✕</button>
+    </div>
+    <form method="POST" action="/admin/subjects" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject Name</label>
+        <input type="text" name="name" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Code (optional)</label>
+        <input type="text" name="code" placeholder="e.g. MATH101" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea name="description" rows="2" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('add-subject-modal').classList.add('hidden')" class="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm">Cancel</button>
+        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assign Modal -->
+<div id="assign-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md m-4">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-bold">Assign Subject to Class</h2>
+      <button onclick="document.getElementById('assign-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">✕</button>
+    </div>
+    <form method="POST" action="/admin/subjects/assign" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+        <select name="classId" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="">Select class</option>
+          <% if (classes) classes.forEach(c => { %><option value="<%= c.id %>"><%= c.name %></option><% }) %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+        <select name="subjectId" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="">Select subject</option>
+          <% if (subjects) subjects.forEach(s => { %><option value="<%= s.id %>"><%= s.name %></option><% }) %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Teacher</label>
+        <select name="teacherId" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="">— No teacher assigned —</option>
+          <% if (teachers) teachers.forEach(t => { %><option value="<%= t.id %>"><%= t.first_name %> <%= t.last_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('assign-modal').classList.add('hidden')" class="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm">Cancel</button>
+        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold">Assign</button>
+      </div>
+    </form>
+  </div>
+</div>

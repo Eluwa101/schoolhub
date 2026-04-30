@@ -1,0 +1,31 @@
+<%- include('../partials/header') %>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <% if (classSubjects && classSubjects.length) { %>
+    <% classSubjects.forEach(cs => { %>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium"><%= cs.subjects?.code || 'Subject' %></span>
+          <span class="text-xs text-gray-400"><%= cs.classes?.academic_year %></span>
+        </div>
+        <h3 class="font-semibold text-gray-900"><%= cs.classes?.name %></h3>
+        <p class="text-sm text-gray-500 mt-1"><%= cs.subjects?.name %></p>
+        <div class="flex gap-2 mt-4">
+          <a href="/teacher/attendance/<%= cs.classes?.id %>"
+             class="flex-1 text-center py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
+            Attendance
+          </a>
+          <a href="/teacher/grades/<%= cs.classes?.id %>/<%= cs.subjects?.id %>"
+             class="flex-1 text-center py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
+            Gradebook
+          </a>
+        </div>
+      </div>
+    <% }) %>
+  <% } else { %>
+    <div class="col-span-3 text-center py-16 text-gray-400">
+      <p>You haven't been assigned to any classes yet.</p>
+      <p class="text-sm mt-1">Contact your school admin to get assigned.</p>
+    </div>
+  <% } %>
+</div>

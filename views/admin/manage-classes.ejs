@@ -1,0 +1,98 @@
+<%- include('../partials/header') %>
+
+<div class="flex justify-end mb-6">
+  <button onclick="document.getElementById('add-class-modal').classList.remove('hidden')"
+          class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+    New Class
+  </button>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <table class="min-w-full divide-y divide-gray-100">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Class</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Grade Level</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Academic Year</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Class Teacher</th>
+        <th class="px-6 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      <% if (classes && classes.length) { %>
+        <% classes.forEach(cls => { %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+              <a href="/admin/classes/<%= cls.id %>" class="font-medium text-indigo-600 hover:underline"><%= cls.name %></a>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600"><%= cls.grade_level || '—' %></td>
+            <td class="px-6 py-4 text-sm text-gray-600"><%= cls.academic_year %></td>
+            <td class="px-6 py-4 text-sm text-gray-600">
+              <%= cls.class_teacher ? `${cls.class_teacher.first_name} ${cls.class_teacher.last_name}` : '—' %>
+            </td>
+            <td class="px-6 py-4 text-right">
+              <form method="POST" action="/admin/classes/<%= cls.id %>?_method=DELETE" class="inline">
+                <button type="submit" onclick="return confirm('Delete class <%= cls.name %>? This cannot be undone.')"
+                        class="text-xs text-red-500 hover:text-red-700">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="5" class="text-center py-12 text-gray-400">No classes yet. Create your first class!</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+<% if (totalPages > 1) { %>
+  <div class="flex justify-end gap-2 mt-4">
+    <% if (page > 1) { %><a href="/admin/classes?page=<%= page - 1 %>" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Previous</a><% } %>
+    <% if (page < totalPages) { %><a href="/admin/classes?page=<%= page + 1 %>" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Next</a><% } %>
+  </div>
+<% } %>
+
+<!-- Add Class Modal -->
+<div id="add-class-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md m-4">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-bold text-gray-900">New Class</h2>
+      <button onclick="document.getElementById('add-class-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <form method="POST" action="/admin/classes" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
+        <input type="text" name="name" required placeholder="e.g. Grade 10A"
+               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
+        <input type="text" name="gradeLevel" placeholder="e.g. Grade 10"
+               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+        <input type="text" name="academicYear" required placeholder="e.g. 2024/2025"
+               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Class Teacher</label>
+        <select name="classTeacherId" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="">— Select Teacher —</option>
+          <% if (teachers) { teachers.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.first_name %> <%= t.last_name %></option>
+          <% }) } %>
+        </select>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('add-class-modal').classList.add('hidden')"
+                class="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">Create Class</button>
+      </div>
+    </form>
+  </div>
+</div>

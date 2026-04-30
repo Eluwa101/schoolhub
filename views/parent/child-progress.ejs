@@ -1,0 +1,95 @@
+<%- include('../partials/header') %>
+
+<div class="flex items-center gap-4 mb-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+  <div class="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
+    <span class="text-orange-700 font-bold text-xl"><%= child.first_name[0] %></span>
+  </div>
+  <div>
+    <h2 class="text-lg font-bold text-gray-900"><%= child.first_name %> <%= child.last_name %></h2>
+    <p class="text-sm text-gray-500"><%= classEnrollments.map(e => e.class?.name).join(', ') || 'No classes' %></p>
+  </div>
+  <!-- Attendance summary badges -->
+  <div class="ml-auto flex gap-3 text-center">
+    <div class="bg-green-50 rounded-xl px-4 py-2">
+      <p class="font-bold text-green-600"><%= attendanceSummary.total > 0 ? Math.round((attendanceSummary.present/attendanceSummary.total)*100) : 0 %>%</p>
+      <p class="text-xs text-gray-500">Attendance</p>
+    </div>
+    <div class="bg-blue-50 rounded-xl px-4 py-2">
+      <p class="font-bold text-blue-600"><%= attendanceSummary.present %>/<%= attendanceSummary.total %></p>
+      <p class="text-xs text-gray-500">Days Present</p>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Grades -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <h3 class="font-semibold text-gray-900 mb-4">Grades by Subject</h3>
+    <% if (Object.keys(subjectMap).length) { %>
+      <div class="space-y-4">
+        <% Object.values(subjectMap).forEach(sub => { %>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-sm font-medium text-gray-700"><%= sub.name %></span>
+              <span class="text-sm font-bold <%= sub.average >= 60 ? 'text-green-600' : 'text-red-500' %>"><%= sub.average %>% (<%= letterGrade(sub.average) %>)</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2">
+              <div class="h-2 rounded-full <%= sub.average >= 60 ? 'bg-green-500' : 'bg-red-400' %>" style="width: <%= sub.average %>%"></div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="text-sm text-gray-400 text-center py-4">No grades recorded yet</p>
+    <% } %>
+  </div>
+
+  <!-- Recent Attendance -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <h3 class="font-semibold text-gray-900 mb-4">Recent Attendance</h3>
+    <% if (attendance && attendance.length) { %>
+      <div class="space-y-2 max-h-64 overflow-y-auto">
+        <% attendance.forEach(rec => { %>
+          <div class="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
+            <span class="text-gray-600"><%= formatDate(rec.date) %></span>
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full capitalize
+              <%= rec.status === 'present' ? 'bg-green-100 text-green-700' :
+                  rec.status === 'absent' ? 'bg-red-100 text-red-700' :
+                  rec.status === 'late' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-gray-100 text-gray-600' %>">
+              <%= rec.status %>
+            </span>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="text-sm text-gray-400 text-center py-4">No attendance records</p>
+    <% } %>
+  </div>
+</div>
+
+<!-- Assignments -->
+<div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+  <h3 class="font-semibold text-gray-900 mb-4">Assignments</h3>
+  <% if (assignments && assignments.length) { %>
+    <div class="space-y-3">
+      <% assignments.slice(0, 10).forEach(a => { %>
+        <% const submission = Array.isArray(a.submission) ? a.submission[0] : null; %>
+        <div class="flex items-center justify-between text-sm p-3 rounded-lg border border-gray-100">
+          <div>
+            <p class="font-medium text-gray-800"><%= a.title %></p>
+            <p class="text-xs text-gray-400"><%= a.subjects?.name %> · Due <%= formatDate(a.due_date) %></p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0
+            <%= submission?.submitted_at ? 'bg-green-100 text-green-700' :
+                new Date(a.due_date) < new Date() ? 'bg-red-100 text-red-600' :
+                'bg-gray-100 text-gray-500' %>">
+            <%= submission?.submitted_at ? (submission.score !== null ? `${submission.score} pts` : 'Submitted') : (new Date(a.due_date) < new Date() ? 'Missed' : 'Pending') %>
+          </span>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <p class="text-sm text-gray-400 text-center py-4">No assignments</p>
+  <% } %>
+</div>

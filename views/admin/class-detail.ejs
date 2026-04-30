@@ -1,0 +1,78 @@
+<%- include('../partials/header') %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Class info -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <h2 class="font-semibold text-gray-900 mb-4">Class Info</h2>
+    <dl class="space-y-3 text-sm">
+      <div><dt class="text-gray-400">Grade Level</dt><dd class="font-medium"><%= cls.grade_level || '—' %></dd></div>
+      <div><dt class="text-gray-400">Academic Year</dt><dd class="font-medium"><%= cls.academic_year %></dd></div>
+      <div><dt class="text-gray-400">Class Teacher</dt><dd class="font-medium"><%= cls.class_teacher ? `${cls.class_teacher.first_name} ${cls.class_teacher.last_name}` : '—' %></dd></div>
+      <div><dt class="text-gray-400">Subjects</dt>
+        <dd class="mt-1 flex flex-wrap gap-1">
+          <% if (cls.class_subjects && cls.class_subjects.length) { %>
+            <% cls.class_subjects.forEach(cs => { %>
+              <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full"><%= cs.subjects?.name %></span>
+            <% }) %>
+          <% } else { %><span class="text-gray-400">None assigned</span><% } %>
+        </dd>
+      </div>
+    </dl>
+  </div>
+
+  <!-- Enroll students -->
+  <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-gray-900">Enrolled Students (<%= students.length %>)</h2>
+      <button onclick="document.getElementById('enroll-modal').classList.remove('hidden')"
+              class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700">
+        + Enroll Students
+      </button>
+    </div>
+
+    <% if (students && students.length) { %>
+      <div class="space-y-2 max-h-96 overflow-y-auto">
+        <% students.forEach(enrollment => { %>
+          <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <span class="text-xs font-semibold text-green-700"><%= enrollment.student?.first_name[0] %></span>
+            </div>
+            <span class="text-sm text-gray-800"><%= enrollment.student?.first_name %> <%= enrollment.student?.last_name %></span>
+            <span class="ml-auto text-xs text-gray-400"><%= formatDate(enrollment.enrolled_at) %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="text-sm text-gray-400 text-center py-8">No students enrolled yet</p>
+    <% } %>
+  </div>
+</div>
+
+<!-- Enroll Modal -->
+<div id="enroll-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md m-4 max-h-screen overflow-y-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-bold">Enroll Students</h2>
+      <button onclick="document.getElementById('enroll-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">✕</button>
+    </div>
+    <form method="POST" action="/admin/classes/<%= cls.id %>/enroll-students" class="space-y-4">
+      <p class="text-sm text-gray-500">Select students to enroll in <strong><%= cls.name %></strong>:</p>
+      <div class="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
+        <% if (allStudents && allStudents.length) { %>
+          <% allStudents.forEach(s => { %>
+            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 p-1 rounded">
+              <input type="checkbox" name="studentIds" value="<%= s.id %>" class="rounded border-gray-300 text-indigo-600" />
+              <%= s.first_name %> <%= s.last_name %>
+            </label>
+          <% }) %>
+        <% } else { %>
+          <p class="text-sm text-gray-400">No students available to enroll.</p>
+        <% } %>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('enroll-modal').classList.add('hidden')" class="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm">Cancel</button>
+        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold">Enroll Selected</button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+
+<div class="space-y-4">
+  <% if (announcements && announcements.length) { %>
+    <% announcements.forEach(ann => { %>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 <%= ann.is_pinned ? 'border-l-4 border-l-yellow-400' : '' %>">
+        <div class="flex items-center gap-2 mb-2">
+          <% if (ann.is_pinned) { %><span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">📌 Pinned</span><% } %>
+        </div>
+        <h3 class="font-semibold text-gray-900 text-lg"><%= ann.title %></h3>
+        <p class="text-sm text-gray-600 mt-2 whitespace-pre-line"><%= ann.body %></p>
+        <p class="text-xs text-gray-400 mt-3">
+          Posted by <%= ann.author?.first_name %> <%= ann.author?.last_name %> · <%= formatDateTime(ann.created_at) %>
+        </p>
+      </div>
+    <% }) %>
+  <% } else { %>
+    <div class="text-center py-16 text-gray-400">No announcements yet.</div>
+  <% } %>
+</div>

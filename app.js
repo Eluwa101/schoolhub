@@ -3,12 +3,12 @@ const express = require('express');
 const path = require('path');
 const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
-const PgSession = require('connect-pg-simple')(session);
 const flash = require('connect-flash');
 const passport = require('passport');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const methodOverride = require('method-override');
+const SupabaseSessionStore = require('./utils/supabaseSessionStore');
 
 const { attachTenant } = require('./middleware/tenantMiddleware');
 const helpers = require('./utils/helpers');
@@ -26,6 +26,9 @@ const apiRoutes = require('./routes/apiRoutes');
 require('./config/passport');
 
 const app = express();
+
+// Trust Vercel's proxy so req.secure and cookies work correctly over HTTPS
+app.set('trust proxy', 1);
 
 // Security
 app.use(helmet({
@@ -55,17 +58,11 @@ app.use(methodOverride('_method'));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session store — use pg only when explicitly enabled via USE_PG_SESSION=true.
-// Supabase direct connections (db.*.supabase.co:5432) require IPv6; use the
-// Session Mode pooler URL (aws-0-*.pooler.supabase.com:5432) for IPv4 networks.
-const usePgStore = process.env.USE_PG_SESSION === 'true' && !!process.env.SUPABASE_DB_URL;
-const sessionStore = usePgStore
-  ? new PgSession({ conString: process.env.SUPABASE_DB_URL, tableName: 'session', createTableIfMissing: false })
+// Use Supabase JS client as session store — works reliably on Vercel serverless.
+// Falls back to MemoryStore in test/local environments without Supabase configured.
+const sessionStore = process.env.SUPABASE_URL
+  ? new SupabaseSessionStore()
   : new session.MemoryStore();
-
-if (!usePgStore && process.env.NODE_ENV !== 'test') {
-  console.warn('[dev] Using in-memory session store. Set USE_PG_SESSION=true with a pooler URL to persist sessions.');
-}
 
 app.use(session({
   store: sessionStore,

@@ -7,6 +7,8 @@ function isAuthenticated(req, res, next) {
   res.redirect('/auth/login');
 }
 
+const { rolePrefix } = require('../utils/helpers');
+
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) {
@@ -15,7 +17,7 @@ function requireRole(...roles) {
     }
     if (!roles.includes(req.user.role)) {
       req.flash('error', 'You do not have permission to access this page.');
-      return res.redirect(`/${req.user.role}/dashboard`);
+      return res.redirect(`/${rolePrefix(req.user.role)}/dashboard`);
     }
     next();
   };

@@ -4,7 +4,7 @@ const { supabase, supabaseAdmin } = require('../utils/supabaseClient');
 const { createProfile, getProfileById } = require('../models/userModel');
 const { createSchool, getSchoolBySlug } = require('../models/schoolModel');
 const { verifyInviteToken, markTokenUsed } = require('../utils/inviteToken');
-const { slugify } = require('../utils/helpers');
+const { slugify, rolePrefix } = require('../utils/helpers');
 const { sendPasswordResetEmail } = require('../utils/mailer');
 
 function buildSession(profile, school) {
@@ -23,7 +23,7 @@ function buildSession(profile, school) {
 
 // GET /auth/login
 function getLogin(req, res) {
-  if (req.session.user) return res.redirect(`/${req.session.user.role}/dashboard`);
+  if (req.session.user) return res.redirect(`/${rolePrefix(req.session.user.role)}/dashboard`);
   res.render('auth/login', { title: 'Sign In', layout: 'layout' });
 }
 
@@ -56,7 +56,7 @@ async function postLogin(req, res, next) {
     const { data: school } = await supabaseAdmin.from('schools').select('name, slug').eq('id', profile.school_id).single();
 
     req.session.user = buildSession(profile, school);
-    req.session.save(() => res.redirect(`/${profile.role}/dashboard`));
+    req.session.save(() => res.redirect(`/${rolePrefix(profile.role)}/dashboard`));
   } catch (err) {
     next(err);
   }
@@ -64,7 +64,7 @@ async function postLogin(req, res, next) {
 
 // GET /auth/register
 function getRegister(req, res) {
-  if (req.session.user) return res.redirect(`/${req.session.user.role}/dashboard`);
+  if (req.session.user) return res.redirect(`/${rolePrefix(req.session.user.role)}/dashboard`);
   res.render('auth/register', { title: 'Create School Account', layout: 'layout' });
 }
 
@@ -202,7 +202,7 @@ async function postInvite(req, res, next) {
 
     req.session.user = buildSession(profile, school);
     req.flash('success', `Welcome to ${invite.schools.name}!`);
-    req.session.save(() => res.redirect(`/${profile.role}/dashboard`));
+    req.session.save(() => res.redirect(`/${rolePrefix(profile.role)}/dashboard`));
   } catch (err) {
     req.flash('error', `Failed to complete registration: ${err.message}`);
     res.redirect(`/auth/invite?token=${req.body.token || ''}`);
@@ -223,7 +223,7 @@ async function googleCallback(req, res, next) {
         return res.redirect('/auth/login');
       }
       req.session.user = buildSession(profile, profile.schools);
-      return req.session.save(() => res.redirect(`/${profile.role}/dashboard`));
+      return req.session.save(() => res.redirect(`/${rolePrefix(profile.role)}/dashboard`));
     }
 
     // New user — store temp data and redirect to setup

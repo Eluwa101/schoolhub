@@ -12,6 +12,7 @@ const methodOverride = require('method-override');
 
 const { attachTenant } = require('./middleware/tenantMiddleware');
 const helpers = require('./utils/helpers');
+const { rolePrefix } = helpers;
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -125,7 +126,7 @@ app.use('/api', apiRoutes);
 // Root redirect
 app.get('/', (req, res) => {
   if (req.session.user) {
-    return res.redirect(`/${req.session.user.role}/dashboard`);
+    return res.redirect(`/${rolePrefix(req.session.user.role)}/dashboard`);
   }
   res.redirect('/auth/login');
 });

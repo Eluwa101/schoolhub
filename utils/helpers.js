@@ -77,6 +77,12 @@ function truncate(str, maxLength = 100) {
   return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
 }
 
+// Maps DB role values to URL route prefix (school_admin → admin)
+function rolePrefix(role) {
+  if (role === 'school_admin' || role === 'super_admin') return 'admin';
+  return role;
+}
+
 module.exports = {
   slugify,
   formatDate,
@@ -87,4 +93,5 @@ module.exports = {
   letterGrade,
   paginate,
   truncate,
+  rolePrefix,
 };

@@ -1,6 +1,8 @@
 const express = require('express');
+const multer = require('multer');
 const passport = require('passport');
 const router = express.Router();
+const { isAuthenticated } = require('../middleware/authMiddleware');
 const {
   getLogin, postLogin,
   getRegister, postRegister, registerValidation,
@@ -9,7 +11,10 @@ const {
   logout,
   getForgotPassword, postForgotPassword,
   getResetPassword, postResetPassword,
+  getProfileSettings, postProfileSettings,
 } = require('../controllers/authController');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.get('/login', getLogin);
 router.post('/login', postLogin);
@@ -36,5 +41,8 @@ router.post('/forgot-password', postForgotPassword);
 
 router.get('/reset-password', getResetPassword);
 router.post('/reset-password', postResetPassword);
+
+router.get('/profile', isAuthenticated, getProfileSettings);
+router.post('/profile', isAuthenticated, upload.single('avatar'), postProfileSettings);
 
 module.exports = router;

@@ -1,0 +1,229 @@
+<%
+const role = currentUser?.role || 'teacher';
+const routePrefix = rolePrefix(role);
+const basePath = `/${routePrefix}/messages`;
+const theme = role === 'parent'
+  ? { accent: 'orange', soft: 'orange-50', strong: 'orange-600' }
+  : role === 'teacher'
+    ? { accent: 'blue', soft: 'blue-50', strong: 'blue-600' }
+    : { accent: 'indigo', soft: 'indigo-50', strong: 'indigo-600' };
+const composeTitles = {
+  parent: 'New Message',
+  teacher: 'New Message',
+  school_admin: 'School Message',
+  super_admin: 'School Message',
+};
+const composeTitle = composeTitles[role] || 'New Message';
+%>
+
+<div class="space-y-6">
+  <section class="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-gray-400">Conversations</p>
+        <h2 class="mt-1 text-2xl font-semibold text-gray-900">Keep your school in sync</h2>
+        <p class="mt-1 text-sm text-gray-500">Read updates, reply in context, and keep every conversation attached to one thread.</p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a href="<%= `${basePath}?tab=inbox` %>"
+           class="rounded-full px-4 py-2 text-sm font-semibold transition <%= tab === 'inbox' || !tab ? `bg-${theme.accent}-600 text-white shadow-lg shadow-${theme.accent}-200/70` : 'border border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50' %>">
+          Inbox
+        </a>
+        <a href="<%= `${basePath}?tab=sent` %>"
+           class="rounded-full px-4 py-2 text-sm font-semibold transition <%= tab === 'sent' ? `bg-${theme.accent}-600 text-white shadow-lg shadow-${theme.accent}-200/70` : 'border border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50' %>">
+          Sent
+        </a>
+        <button onclick="document.getElementById('compose-modal').classList.remove('hidden')"
+                class="inline-flex items-center gap-2 rounded-full bg-gray-950 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-gray-300 transition hover:-translate-y-0.5 hover:bg-gray-800">
+          <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-base">+</span>
+          Compose
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
+    <div class="overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur">
+      <div class="border-b border-gray-100 px-5 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-gray-900"><%= tab === 'sent' ? 'Sent Threads' : 'Inbox Threads' %></p>
+            <p class="text-xs text-gray-400"><%= total %> conversation<%= total === 1 ? '' : 's' %></p>
+          </div>
+          <% if (totalPages > 1) { %>
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500">Page <%= page %> of <%= totalPages %></span>
+          <% } %>
+        </div>
+      </div>
+
+      <% if (messages && messages.length) { %>
+        <div class="max-h-[70vh] overflow-y-auto">
+          <% messages.forEach((message) => { %>
+            <a href="<%= `${basePath}?tab=${tab}&messageId=${message.id}` %>"
+               class="block border-b border-gray-100 px-5 py-4 transition last:border-b-0 <%= selectedConversation && selectedConversation.id === message.id ? `bg-${theme.soft}` : 'hover:bg-gray-50/80' %>">
+              <div class="flex items-start gap-3">
+                <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-sm font-semibold text-gray-700">
+                  <%= message.counterpart?.first_name?.[0] || '?' %>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-semibold text-gray-900">
+                        <%= message.counterpart ? `${message.counterpart.first_name} ${message.counterpart.last_name}` : 'Conversation' %>
+                      </p>
+                      <p class="text-xs uppercase tracking-[0.2em] text-gray-400">
+                        <%= message.counterpart?.role ? message.counterpart.role.replace('_', ' ') : (tab === 'sent' ? 'Recipient' : 'Sender') %>
+                      </p>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                      <span class="text-xs text-gray-400"><%= formatDateTime(message.updatedAt) %></span>
+                      <% if (message.unreadCount > 0 && tab !== 'sent') { %>
+                        <span class="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white"><%= message.unreadCount %></span>
+                      <% } %>
+                    </div>
+                  </div>
+                  <p class="mt-3 truncate text-sm font-medium text-gray-800"><%= message.subject %></p>
+                  <p class="mt-1 truncate text-xs text-gray-500"><%= truncate(message.latestMessage?.body, 96) %></p>
+                </div>
+              </div>
+            </a>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <div class="px-6 py-14 text-center">
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">@</div>
+          <h3 class="mt-4 text-base font-semibold text-gray-900">Nothing here yet</h3>
+          <p class="mt-1 text-sm text-gray-500">Open a new thread to reach your school community.</p>
+        </div>
+      <% } %>
+
+      <% if (totalPages > 1) { %>
+        <div class="flex items-center justify-between border-t border-gray-100 px-5 py-4 text-sm">
+          <div class="text-gray-400">Browse more threads</div>
+          <div class="flex gap-2">
+            <% if (page > 1) { %>
+              <a href="<%= `${basePath}?tab=${tab}&page=${page - 1}` %>" class="rounded-full border border-gray-200 px-3 py-1.5 text-gray-600 hover:bg-gray-50">Previous</a>
+            <% } %>
+            <% if (page < totalPages) { %>
+              <a href="<%= `${basePath}?tab=${tab}&page=${page + 1}` %>" class="rounded-full border border-gray-200 px-3 py-1.5 text-gray-600 hover:bg-gray-50">Next</a>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur">
+      <% if (selectedMessage && conversation && conversation.length) { %>
+        <div class="border-b border-gray-100 px-6 py-5">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Thread</p>
+              <h3 class="mt-1 text-xl font-semibold text-gray-900"><%= selectedMessage.subject %></h3>
+              <p class="mt-1 text-sm text-gray-500">
+                <%= replyRecipient ? `${replyRecipient.first_name} ${replyRecipient.last_name}` : 'Conversation participant' %>
+              </p>
+            </div>
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500">
+              <%= conversation.length %> message<%= conversation.length === 1 ? '' : 's' %>
+            </span>
+          </div>
+        </div>
+
+        <div class="max-h-[52vh] space-y-4 overflow-y-auto px-6 py-6">
+          <% conversation.forEach((entry) => { const mine = entry.sender_id === currentUser.userId; %>
+            <div class="flex <%= mine ? 'justify-end' : 'justify-start' %>">
+              <div class="max-w-2xl rounded-[24px] px-5 py-4 shadow-sm <%= mine ? `bg-${theme.accent}-600 text-white` : 'border border-gray-200 bg-white text-gray-800' %>">
+                <div class="flex items-center justify-between gap-4">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] <%= mine ? 'text-white/75' : 'text-gray-400' %>">
+                    <%= mine ? 'You' : `${entry.sender?.first_name || ''} ${entry.sender?.last_name || ''}` %>
+                  </p>
+                  <span class="text-[11px] <%= mine ? 'text-white/70' : 'text-gray-400' %>"><%= formatDateTime(entry.created_at) %></span>
+                </div>
+                <p class="mt-2 whitespace-pre-line text-sm leading-6"><%= entry.body %></p>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+
+        <% if (replyRecipient) { %>
+          <div class="border-t border-gray-100 bg-gray-50/80 px-6 py-5">
+            <form method="POST" action="<%= basePath %>" class="space-y-4">
+              <input type="hidden" name="recipientId" value="<%= replyRecipient.id %>" />
+              <input type="hidden" name="subject" value="<%= selectedMessage.subject %>" />
+              <input type="hidden" name="parentMessageId" value="<%= selectedMessage.id %>" />
+              <input type="hidden" name="returnTab" value="<%= tab %>" />
+              <div>
+                <label class="mb-2 block text-sm font-medium text-gray-700">Reply</label>
+                <textarea name="body" rows="4" required
+                          class="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm focus:ring-2 focus:ring-gray-950/10"></textarea>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-xs text-gray-400">Replying to <%= replyRecipient.first_name %> <%= replyRecipient.last_name %>.</p>
+                <button type="submit"
+                        class="rounded-full bg-gray-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-gray-300 transition hover:-translate-y-0.5 hover:bg-gray-800">
+                  Send Reply
+                </button>
+              </div>
+            </form>
+          </div>
+        <% } %>
+      <% } else { %>
+        <div class="flex min-h-[420px] flex-col items-center justify-center px-8 text-center">
+          <div class="flex h-16 w-16 items-center justify-center rounded-[22px] bg-gray-100 text-2xl text-gray-500">#</div>
+          <h3 class="mt-5 text-lg font-semibold text-gray-900">Select a conversation</h3>
+          <p class="mt-2 max-w-md text-sm text-gray-500">Choose a thread from the left to read the full conversation and reply without leaving the page.</p>
+        </div>
+      <% } %>
+    </div>
+  </section>
+</div>
+
+<div id="compose-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+  <div class="w-full max-w-xl rounded-[30px] border border-white/70 bg-white p-8 shadow-[0_40px_90px_-50px_rgba(15,23,42,0.75)]">
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Compose</p>
+        <h2 class="mt-1 text-xl font-semibold text-gray-900"><%= composeTitle %></h2>
+      </div>
+      <button onclick="document.getElementById('compose-modal').classList.add('hidden')" class="rounded-full border border-gray-200 p-2 text-gray-400 transition hover:border-gray-300 hover:text-gray-700">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <form method="POST" action="<%= basePath %>" class="space-y-4">
+      <input type="hidden" name="returnTab" value="sent" />
+      <div>
+        <label class="mb-2 block text-sm font-medium text-gray-700">Recipient</label>
+        <select name="recipientId" required
+                class="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm focus:ring-2 focus:ring-gray-950/10">
+          <option value="">Select recipient</option>
+          <% contacts.forEach((contact) => { %>
+            <option value="<%= contact.id %>"><%= contact.first_name %> <%= contact.last_name %> (<%= contact.role.replace('_', ' ') %>)</option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label class="mb-2 block text-sm font-medium text-gray-700">Subject</label>
+        <input type="text" name="subject" required
+               class="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm focus:ring-2 focus:ring-gray-950/10" />
+      </div>
+      <div>
+        <label class="mb-2 block text-sm font-medium text-gray-700">Message</label>
+        <textarea name="body" rows="5" required
+                  class="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm focus:ring-2 focus:ring-gray-950/10"></textarea>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('compose-modal').classList.add('hidden')"
+                class="rounded-full border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit"
+                class="rounded-full bg-gray-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-gray-300 transition hover:-translate-y-0.5 hover:bg-gray-800">
+          Send Message
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

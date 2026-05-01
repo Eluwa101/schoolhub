@@ -1,7 +1,29 @@
 /* SchoolHub Custom Styles */
 
+:root {
+  --bg-soft: #f8fafc;
+  --panel-border: rgba(255, 255, 255, 0.75);
+  --focus-ring: rgba(79, 70, 229, 0.28);
+  --focus-outline: rgba(79, 70, 229, 0.48);
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--tenant-surface, var(--bg-soft));
+  min-height: 100vh;
+}
+
+.app-body {
+  --focus-ring: var(--tenant-primary-soft, rgba(79, 70, 229, 0.28));
+  --focus-outline: var(--tenant-primary, rgba(79, 70, 229, 0.48));
+}
+
+.tenant-app-aurora {
+  background:
+    radial-gradient(circle at top right, var(--tenant-primary-soft, rgba(79, 70, 229, 0.16)), transparent 28%),
+    radial-gradient(circle at bottom left, var(--tenant-secondary-soft, rgba(14, 165, 233, 0.12)), transparent 30%),
+    radial-gradient(circle at center left, var(--tenant-accent-soft, rgba(20, 184, 166, 0.16)), transparent 22%),
+    linear-gradient(180deg, var(--tenant-surface, #f8fafc) 0%, #eef2ff 100%);
 }
 
 .font-inter {
@@ -13,6 +35,11 @@ body {
   transition-property: color, background-color, border-color, box-shadow;
   transition-duration: 150ms;
   transition-timing-function: ease-in-out;
+}
+
+::selection {
+  background: rgba(79, 70, 229, 0.16);
+  color: #111827;
 }
 
 /* Scrollbar styling */
@@ -34,6 +61,8 @@ body {
 /* Flash message auto-dismiss animation */
 .flash-msg {
   animation: slideIn 0.3s ease-out;
+  border-radius: 18px;
+  box-shadow: 0 20px 40px -32px rgba(15, 23, 42, 0.45);
 }
 @keyframes slideIn {
   from { transform: translateY(-10px); opacity: 0; }
@@ -75,7 +104,49 @@ input:focus, select:focus, textarea:focus {
   outline: none;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  outline: none;
+}
+
+input,
+select,
+textarea {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 4px var(--focus-ring);
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 2px;
+}
+
+nav,
+aside {
+  backdrop-filter: blur(16px);
+}
+
 /* Table hover */
 tbody tr:hover {
   background-color: #f8fafc;
+}
+
+.density-compact main {
+  padding-top: 1.25rem;
+  padding-bottom: 1.5rem;
+}
+
+.density-compact table th,
+.density-compact table td {
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
 }

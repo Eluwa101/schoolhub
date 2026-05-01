@@ -4,9 +4,10 @@ const { getSubjectsForTeacher } = require('../models/subjectModel');
 const { getAttendanceByClassDate, bulkUpsertAttendance } = require('../models/attendanceModel');
 const { getGradesByClassSubject, upsertGrade } = require('../models/gradeModel');
 const { getAssignmentsByTeacher, getAssignmentById, createAssignment, getSubmissionsForAssignment, gradeSubmission } = require('../models/assignmentModel');
-const { getInbox, getSent, sendMessage, markAsRead, getThread, getMessageById } = require('../models/messageModel');
-const { getProfilesBySchool } = require('../models/userModel');
+const { getInbox, getSent, sendMessage, getThread, getMessageById, markConversationAsRead } = require('../models/messageModel');
+const { getActiveProfilesBySchool } = require('../models/userModel');
 const { sendAssignmentNotificationEmail, sendNewMessageEmail } = require('../utils/mailer');
+const { selectConversation, resolveReplyRecipient, buildConversationThread } = require('../utils/messageCenter');
 
 async function getDashboard(req, res, next) {
   try {
@@ -274,6 +275,7 @@ async function getMessages(req, res, next) {
   try {
     const page = parseInt(req.query.page) || 1;
     const tab = req.query.tab || 'inbox';
+    const messageId = req.query.messageId || '';
     let messages = [], total = 0;
 
     if (tab === 'sent') {
@@ -282,7 +284,23 @@ async function getMessages(req, res, next) {
       ({ messages, total } = await getInbox(req.user.userId, req.schoolId, { page }));
     }
 
-    const { users: contacts } = await getProfilesBySchool(req.schoolId, {});
+    const contacts = await getActiveProfilesBySchool(req.schoolId, {
+      excludeUserId: req.user.userId,
+      roles: ['school_admin', 'teacher', 'parent'],
+    });
+    const selectedConversation = selectConversation(messages, messageId) || messages[0] || null;
+    let conversation = null;
+    let replyRecipient = null;
+    let selectedMessage = null;
+
+    if (selectedConversation) {
+      await markConversationAsRead(selectedConversation.id, req.user.userId, req.schoolId);
+      selectedMessage = await getMessageById(selectedConversation.id, req.schoolId);
+      const thread = await getThread(selectedConversation.id, req.schoolId);
+      conversation = buildConversationThread(selectedMessage, thread);
+      replyRecipient = resolveReplyRecipient({ root: selectedMessage }, req.user.userId);
+    }
+
     res.render('teacher/messages', {
       title: 'Messages',
       messages,
@@ -291,6 +309,10 @@ async function getMessages(req, res, next) {
       page,
       totalPages: Math.ceil(total / 20),
       contacts,
+      selectedConversation,
+      selectedMessage,
+      conversation,
+      replyRecipient,
     });
   } catch (err) {
     next(err);
@@ -299,8 +321,8 @@ async function getMessages(req, res, next) {
 
 async function postMessage(req, res, next) {
   try {
-    const { recipientId, subject, body, parentMessageId } = req.body;
-    await sendMessage({
+    const { recipientId, subject, body, parentMessageId, returnTab } = req.body;
+    const createdMessage = await sendMessage({
       schoolId: req.schoolId,
       senderId: req.user.userId,
       recipientId,
@@ -323,8 +345,9 @@ async function postMessage(req, res, next) {
       }
     }
 
-    req.flash('success', 'Message sent.');
-    res.redirect('/teacher/messages');
+    const conversationId = parentMessageId || createdMessage.id;
+    req.flash('success', parentMessageId ? 'Reply sent.' : 'Message sent.');
+    res.redirect(`/teacher/messages?tab=${returnTab || (parentMessageId ? 'inbox' : 'sent')}&messageId=${conversationId}`);
   } catch (err) {
     req.flash('error', `Failed to send message: ${err.message}`);
     res.redirect('/teacher/messages');

@@ -1,15 +1,30 @@
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
-const { supabaseAdmin } = require('../utils/supabaseClient');
+const { supabase, supabaseAdmin } = require('../utils/supabaseClient');
 const { getSchoolById, updateSchool, getSchoolStats } = require('../models/schoolModel');
-const { getProfilesBySchool, toggleUserActive: toggleActiveModel } = require('../models/userModel');
-const { getClassesBySchool, createClass, updateClass, deleteClass, getStudentsInClass, enrollStudent } = require('../models/classModel');
-const { getSubjectsBySchool, createSubject, updateSubject, deleteSubject, assignSubjectToClass } = require('../models/subjectModel');
+const { getProfilesBySchool, getActiveProfilesBySchool, toggleUserActive: toggleActiveModel, createProfile } = require('../models/userModel');
+const { getClassesBySchool, getAllClassesBySchool, getClassById, createClass, updateClass, deleteClass, getStudentsInClass, enrollStudent, removeStudentFromClass } = require('../models/classModel');
+const { getSubjectsBySchool, getAllSubjectsBySchool, createSubject, updateSubject, deleteSubject, assignSubjectToClass } = require('../models/subjectModel');
 const { getAnnouncements: fetchAnnouncements, createAnnouncement, deleteAnnouncement } = require('../models/announcementModel');
 const { getAuditLogs } = require('../models/auditModel');
 const { getSchoolAttendanceStats } = require('../models/attendanceModel');
+const { getInbox, getSent, getMessageById, getThread, sendMessage, markConversationAsRead } = require('../models/messageModel');
 const { createInviteToken } = require('../utils/inviteToken');
-const { sendInviteEmail } = require('../utils/mailer');
-const { slugify } = require('../utils/helpers');
+const { sendInviteEmail, sendNewMessageEmail } = require('../utils/mailer');
+const { parseCsvBuffer, toCsv } = require('../utils/csv');
+const { selectConversation, resolveReplyRecipient, buildConversationThread } = require('../utils/messageCenter');
+const { slugify, normalizeSchoolTheme, normalizeSchoolPreferences } = require('../utils/helpers');
+
+function csvValue(row, keys) {
+  for (const key of keys) {
+    if (row[key]) return row[key].trim();
+  }
+  return '';
+}
+
+function generateTemporaryPassword() {
+  return `SchoolHub!${crypto.randomBytes(6).toString('hex')}`;
+}
 
 // Dashboard
 async function getDashboard(req, res, next) {
@@ -32,7 +47,12 @@ async function getDashboard(req, res, next) {
 async function getSettings(req, res, next) {
   try {
     const school = await getSchoolById(req.schoolId);
-    res.render('admin/school-settings', { title: 'School Settings', school });
+    res.render('admin/school-settings', {
+      title: 'School Settings',
+      school,
+      schoolTheme: normalizeSchoolTheme(school?.theme_settings),
+      schoolPreferences: normalizeSchoolPreferences(school?.preferences),
+    });
   } catch (err) {
     next(err);
   }
@@ -40,7 +60,21 @@ async function getSettings(req, res, next) {
 
 async function postSettings(req, res, next) {
   try {
-    const { name, address, phone, email, website, termStart, termEnd } = req.body;
+    const {
+      name,
+      address,
+      phone,
+      email,
+      website,
+      termStart,
+      termEnd,
+      brandPrimary,
+      brandSecondary,
+      accentColor,
+      surfaceTint,
+      dateLocale,
+      uiDensity,
+    } = req.body;
     let logoUrl = undefined;
 
     if (req.file) {
@@ -55,10 +89,28 @@ async function postSettings(req, res, next) {
       }
     }
 
-    const updates = { name, address, phone, email, website, term_start: termStart || null, term_end: termEnd || null };
+    const updates = {
+      name,
+      address,
+      phone,
+      email,
+      website,
+      term_start: termStart || null,
+      term_end: termEnd || null,
+      theme_settings: normalizeSchoolTheme({
+        primary: brandPrimary,
+        secondary: brandSecondary,
+        accent: accentColor,
+        surface: surfaceTint,
+      }),
+      preferences: normalizeSchoolPreferences({ dateLocale, uiDensity }),
+    };
     if (logoUrl) updates.logo_url = logoUrl;
 
     await updateSchool(req.schoolId, updates);
+    if (req.session?.user) {
+      req.session.user.schoolName = name;
+    }
     req.flash('success', 'School settings updated.');
     res.redirect('/admin/settings');
   } catch (err) {
@@ -73,6 +125,8 @@ async function getUsers(req, res, next) {
     const page = parseInt(req.query.page) || 1;
     const role = req.query.role || null;
     const { users, total } = await getProfilesBySchool(req.schoolId, { role, page });
+    const importReport = req.session.importReport || null;
+    delete req.session.importReport;
     res.render('admin/manage-users', {
       title: 'Manage Users',
       users,
@@ -80,6 +134,7 @@ async function getUsers(req, res, next) {
       page,
       totalPages: Math.ceil(total / 20),
       currentRole: role || '',
+      importReport,
     });
   } catch (err) {
     next(err);
@@ -127,6 +182,168 @@ async function postInviteUser(req, res, next) {
     res.redirect('/admin/users');
   } catch (err) {
     req.flash('error', `Failed to create invitation: ${err.message}`);
+    res.redirect('/admin/users');
+  }
+}
+
+async function getUserImportTemplate(req, res, next) {
+  try {
+    const sample = [
+      {
+        email: 'student1@example.com',
+        first_name: 'Ada',
+        last_name: 'Okafor',
+        role: 'student',
+        phone: '+2348000000001',
+        class_name: 'Grade 10A',
+        academic_year: '2026/2027',
+      },
+      {
+        email: 'teacher1@example.com',
+        first_name: 'Musa',
+        last_name: 'Bello',
+        role: 'teacher',
+        phone: '+2348000000002',
+        class_name: '',
+        academic_year: '',
+      },
+    ];
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="schoolhub-user-import-template.csv"');
+    res.send(toCsv(sample));
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postBulkImportUsers(req, res, next) {
+  try {
+    if (!req.file) {
+      req.flash('error', 'Please upload a CSV file.');
+      return res.redirect('/admin/users');
+    }
+
+    const rows = parseCsvBuffer(req.file.buffer).filter((row) => Object.values(row).some(Boolean));
+    if (!rows.length) {
+      req.flash('error', 'The uploaded CSV is empty.');
+      return res.redirect('/admin/users');
+    }
+
+    const validRoles = new Set(['teacher', 'student', 'parent', 'school_admin']);
+    const classes = await getAllClassesBySchool(req.schoolId);
+    const classByName = new Map(classes.map((cls) => [cls.name.trim().toLowerCase(), cls]));
+
+    const { data: authDirectory } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    const knownEmails = new Set((authDirectory?.users || []).map((user) => String(user.email || '').toLowerCase()));
+
+    const reportRows = [];
+    let createdCount = 0;
+    let enrolledCount = 0;
+
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index];
+      const email = csvValue(row, ['email']).toLowerCase();
+      const firstName = csvValue(row, ['first_name', 'firstname', 'first']);
+      const lastName = csvValue(row, ['last_name', 'lastname', 'last']);
+      const role = csvValue(row, ['role']).toLowerCase() || 'student';
+      const phone = csvValue(row, ['phone', 'phone_number']);
+      const className = csvValue(row, ['class_name', 'classname']);
+      const academicYear = csvValue(row, ['academic_year', 'academicyear']);
+
+      if (!email || !firstName || !lastName) {
+        reportRows.push({ row: index + 2, email, status: 'Skipped', note: 'Missing email, first name, or last name.' });
+        continue;
+      }
+      if (!validRoles.has(role)) {
+        reportRows.push({ row: index + 2, email, status: 'Skipped', note: `Unsupported role "${role}".` });
+        continue;
+      }
+      if (knownEmails.has(email)) {
+        reportRows.push({ row: index + 2, email, status: 'Skipped', note: 'User already exists.' });
+        continue;
+      }
+
+      const temporaryPassword = generateTemporaryPassword();
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: temporaryPassword,
+        email_confirm: true,
+      });
+
+      if (authError || !authUser?.user) {
+        reportRows.push({ row: index + 2, email, status: 'Error', note: authError?.message || 'Failed to create auth user.' });
+        continue;
+      }
+
+      try {
+        await createProfile({
+          id: authUser.user.id,
+          schoolId: req.schoolId,
+          role,
+          firstName,
+          lastName,
+          phone: phone || null,
+        });
+
+        if (role === 'student' && className) {
+          const matchingClass = classByName.get(className.trim().toLowerCase());
+          if (matchingClass) {
+            await enrollStudent({
+              studentId: authUser.user.id,
+              classId: matchingClass.id,
+              academicYear: academicYear || matchingClass.academic_year || new Date().getFullYear().toString(),
+            });
+            enrolledCount++;
+            reportRows.push({
+              row: index + 2,
+              email,
+              status: 'Created',
+              note: `Created account and enrolled in ${matchingClass.name}.`,
+            });
+          } else {
+            reportRows.push({
+              row: index + 2,
+              email,
+              status: 'Created',
+              note: `Created account, but class "${className}" was not found.`,
+            });
+          }
+        } else {
+          reportRows.push({
+            row: index + 2,
+            email,
+            status: 'Created',
+            note: 'Created account and sent password setup email.',
+          });
+        }
+
+        await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${process.env.APP_URL}/auth/reset-password`,
+        }).catch(() => null);
+
+        createdCount++;
+        knownEmails.add(email);
+      } catch (err) {
+        reportRows.push({ row: index + 2, email, status: 'Error', note: err.message });
+      }
+    }
+
+    req.session.importReport = {
+      summary: {
+        processed: rows.length,
+        created: createdCount,
+        enrolled: enrolledCount,
+        skipped: reportRows.filter((row) => row.status === 'Skipped').length,
+        errors: reportRows.filter((row) => row.status === 'Error').length,
+      },
+      rows: reportRows,
+    };
+
+    req.flash('success', `Processed ${rows.length} row(s). Created ${createdCount} account(s).`);
+    res.redirect('/admin/users');
+  } catch (err) {
+    req.flash('error', `Bulk import failed: ${err.message}`);
     res.redirect('/admin/users');
   }
 }
@@ -244,7 +461,7 @@ async function getClasses(req, res, next) {
   try {
     const page = parseInt(req.query.page) || 1;
     const { classes, total } = await getClassesBySchool(req.schoolId, { page });
-    const { users: teachers } = await getProfilesBySchool(req.schoolId, { role: 'teacher' });
+    const teachers = await getActiveProfilesBySchool(req.schoolId, { roles: ['teacher'] });
     res.render('admin/manage-classes', {
       title: 'Manage Classes',
       classes,
@@ -303,11 +520,21 @@ async function deleteClassHandler(req, res, next) {
 
 async function getClassDetail(req, res, next) {
   try {
-    const { getClassById } = require('../models/classModel');
     const cls = await getClassById(req.params.id, req.schoolId);
     const students = await getStudentsInClass(req.params.id, req.schoolId);
-    const { users: allStudents } = await getProfilesBySchool(req.schoolId, { role: 'student' });
-    res.render('admin/class-detail', { title: `Class: ${cls.name}`, cls, students, allStudents });
+    const [allStudents, teachers] = await Promise.all([
+      getActiveProfilesBySchool(req.schoolId, { roles: ['student'] }),
+      getActiveProfilesBySchool(req.schoolId, { roles: ['teacher'] }),
+    ]);
+    const enrolledIds = new Set(students.map((enrollment) => enrollment.student?.id).filter(Boolean));
+    const availableStudents = allStudents.filter((student) => !enrolledIds.has(student.id));
+    res.render('admin/class-detail', {
+      title: `Class: ${cls.name}`,
+      cls,
+      students,
+      allStudents: availableStudents,
+      teachers,
+    });
   } catch (err) {
     next(err);
   }
@@ -320,7 +547,7 @@ async function postEnrollStudents(req, res, next) {
     if (!studentIds) { req.flash('error', 'No students selected.'); return res.redirect(`/admin/classes/${classId}`); }
     if (!Array.isArray(studentIds)) studentIds = [studentIds];
 
-    const { classes } = await getClassesBySchool(req.schoolId);
+    const classes = await getAllClassesBySchool(req.schoolId);
     const cls = classes?.find(c => c.id === classId);
     const academicYear = cls?.academic_year || new Date().getFullYear().toString();
 
@@ -333,13 +560,27 @@ async function postEnrollStudents(req, res, next) {
   }
 }
 
+async function deleteClassStudent(req, res, next) {
+  try {
+    const { classId, studentId } = req.params;
+    await removeStudentFromClass(studentId, classId);
+    req.flash('success', 'Student removed from class.');
+    res.redirect(`/admin/classes/${classId}`);
+  } catch (err) {
+    req.flash('error', `Failed to remove student: ${err.message}`);
+    res.redirect(`/admin/classes/${req.params.classId}`);
+  }
+}
+
 // Subject Management
 async function getSubjects(req, res, next) {
   try {
     const page = parseInt(req.query.page) || 1;
     const { subjects, total } = await getSubjectsBySchool(req.schoolId, { page });
-    const { classes } = await getClassesBySchool(req.schoolId);
-    const { users: teachers } = await getProfilesBySchool(req.schoolId, { role: 'teacher' });
+    const [classes, teachers] = await Promise.all([
+      getAllClassesBySchool(req.schoolId),
+      getActiveProfilesBySchool(req.schoolId, { roles: ['teacher'] }),
+    ]);
     res.render('admin/manage-subjects', {
       title: 'Manage Subjects',
       subjects,
@@ -400,9 +641,11 @@ async function deleteSubjectHandler(req, res, next) {
 // Timetable
 async function getTimetable(req, res, next) {
   try {
-    const { classes } = await getClassesBySchool(req.schoolId);
-    const { subjects } = await getSubjectsBySchool(req.schoolId);
-    const { users: teachers } = await getProfilesBySchool(req.schoolId, { role: 'teacher' });
+    const [classes, subjects, teachers] = await Promise.all([
+      getAllClassesBySchool(req.schoolId),
+      getAllSubjectsBySchool(req.schoolId),
+      getActiveProfilesBySchool(req.schoolId, { roles: ['teacher'] }),
+    ]);
 
     let timetableEntries = [];
     const classId = req.query.classId;
@@ -475,7 +718,7 @@ async function getAnnouncements(req, res, next) {
   try {
     const page = parseInt(req.query.page) || 1;
     const { announcements, total } = await fetchAnnouncements(req.schoolId, { page });
-    const { classes } = await getClassesBySchool(req.schoolId);
+    const classes = await getAllClassesBySchool(req.schoolId);
     res.render('admin/announcements', {
       title: 'Announcements',
       announcements,
@@ -521,6 +764,87 @@ async function deleteAnnouncementHandler(req, res, next) {
   } catch (err) {
     req.flash('error', `Failed to delete announcement: ${err.message}`);
     res.redirect('/admin/announcements');
+  }
+}
+
+// Messages
+async function getMessages(req, res, next) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const tab = req.query.tab || 'inbox';
+    const messageId = req.query.messageId || '';
+    let messages = [], total = 0;
+
+    if (tab === 'sent') {
+      ({ messages, total } = await getSent(req.user.userId, req.schoolId, { page }));
+    } else {
+      ({ messages, total } = await getInbox(req.user.userId, req.schoolId, { page }));
+    }
+
+    const contacts = await getActiveProfilesBySchool(req.schoolId, {
+      excludeUserId: req.user.userId,
+      roles: ['school_admin', 'teacher', 'parent'],
+    });
+
+    const selectedConversation = selectConversation(messages, messageId) || messages[0] || null;
+    let conversation = null;
+    let replyRecipient = null;
+    let selectedMessage = null;
+
+    if (selectedConversation) {
+      await markConversationAsRead(selectedConversation.id, req.user.userId, req.schoolId);
+      selectedMessage = await getMessageById(selectedConversation.id, req.schoolId);
+      const thread = await getThread(selectedConversation.id, req.schoolId);
+      conversation = buildConversationThread(selectedMessage, thread);
+      replyRecipient = resolveReplyRecipient({ root: selectedMessage }, req.user.userId);
+    }
+
+    res.render('admin/messages', {
+      title: 'Messages',
+      messages,
+      tab,
+      total,
+      page,
+      totalPages: Math.ceil(total / 20),
+      contacts,
+      selectedConversation,
+      selectedMessage,
+      conversation,
+      replyRecipient,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postMessage(req, res, next) {
+  try {
+    const { recipientId, subject, body, parentMessageId, returnTab } = req.body;
+    const createdMessage = await sendMessage({
+      schoolId: req.schoolId,
+      senderId: req.user.userId,
+      recipientId,
+      subject,
+      body,
+      parentMessageId: parentMessageId || null,
+    });
+
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(recipientId);
+    if (authUser?.user?.email) {
+      sendNewMessageEmail({
+        to: authUser.user.email,
+        senderName: `${req.user.firstName} ${req.user.lastName || ''}`,
+        messageSubject: subject,
+        appUrl: process.env.APP_URL,
+      }).catch(() => {});
+    }
+
+    const conversationId = parentMessageId || createdMessage.id;
+    req.flash('success', parentMessageId ? 'Reply sent.' : 'Message sent.');
+    res.redirect(`/admin/messages?tab=${returnTab || (parentMessageId ? 'inbox' : 'sent')}&messageId=${conversationId}`);
+  } catch (err) {
+    req.flash('error', `Failed to send message: ${err.message}`);
+    res.redirect('/admin/messages');
   }
 }
 
@@ -592,6 +916,8 @@ module.exports = {
   postSettings,
   getUsers,
   postInviteUser,
+  getUserImportTemplate,
+  postBulkImportUsers,
   toggleUserActive: toggleUserActiveHandler,
   getUserProfile,
   postLinkChild,
@@ -602,6 +928,7 @@ module.exports = {
   deleteClassHandler,
   getClassDetail,
   postEnrollStudents,
+  deleteClassStudent,
   getSubjects,
   postCreateSubject,
   postAssignSubjectToClass,
@@ -612,6 +939,8 @@ module.exports = {
   getAnnouncements,
   postAnnouncement,
   deleteAnnouncementHandler,
+  getMessages,
+  postMessage,
   getReports,
   exportReports,
 };

@@ -15,6 +15,8 @@ router.post('/settings', ...adminOnly, upload.single('logo'), ctrl.postSettings)
 
 router.get('/users', ...adminOnly, ctrl.getUsers);
 router.post('/users/invite', ...adminOnly, ctrl.postInviteUser);
+router.get('/users/import-template', ...adminOnly, ctrl.getUserImportTemplate);
+router.post('/users/import', ...adminOnly, upload.single('spreadsheet'), ctrl.postBulkImportUsers);
 router.get('/users/:id', ...adminOnly, ctrl.getUserProfile);
 router.post('/users/:id/toggle-active', ...adminOnly, ctrl.toggleUserActive);
 router.post('/users/:id/link-child', ...adminOnly, ctrl.postLinkChild);
@@ -26,6 +28,7 @@ router.get('/classes/:id', ...adminOnly, ctrl.getClassDetail);
 router.put('/classes/:id', ...adminOnly, ctrl.putClass);
 router.delete('/classes/:id', ...adminOnly, ctrl.deleteClassHandler);
 router.post('/classes/:classId/enroll-students', ...adminOnly, ctrl.postEnrollStudents);
+router.delete('/classes/:classId/students/:studentId', ...adminOnly, ctrl.deleteClassStudent);
 
 router.get('/subjects', ...adminOnly, ctrl.getSubjects);
 router.post('/subjects', ...adminOnly, ctrl.postCreateSubject);
@@ -39,6 +42,9 @@ router.delete('/timetable/:id', ...adminOnly, ctrl.deleteTimetableEntry);
 router.get('/announcements', ...adminOnly, ctrl.getAnnouncements);
 router.post('/announcements', ...adminOnly, ctrl.postAnnouncement);
 router.delete('/announcements/:id', ...adminOnly, ctrl.deleteAnnouncementHandler);
+
+router.get('/messages', ...adminOnly, ctrl.getMessages);
+router.post('/messages', ...adminOnly, ctrl.postMessage);
 
 router.get('/reports', ...adminOnly, ctrl.getReports);
 router.get('/reports/export', ...adminOnly, ctrl.exportReports);

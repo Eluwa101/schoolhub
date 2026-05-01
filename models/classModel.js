@@ -15,6 +15,20 @@ async function getClassesBySchool(schoolId, { page = 1, limit = 20 } = {}) {
   return { classes: data, total: count };
 }
 
+async function getAllClassesBySchool(schoolId) {
+  const { data, error } = await supabaseAdmin
+    .from('classes')
+    .select(`
+      *,
+      class_teacher:class_teacher_id (id, first_name, last_name),
+      student_count:student_classes(count)
+    `)
+    .eq('school_id', schoolId)
+    .order('name');
+  if (error) throw error;
+  return data;
+}
+
 async function getClassById(id, schoolId) {
   const { data, error } = await supabaseAdmin
     .from('classes')
@@ -132,6 +146,7 @@ async function getClassesForStudent(studentId, schoolId) {
 
 module.exports = {
   getClassesBySchool,
+  getAllClassesBySchool,
   getClassById,
   createClass,
   updateClass,

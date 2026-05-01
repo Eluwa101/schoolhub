@@ -1,73 +1,160 @@
 <%- include('../partials/header') %>
 
-<div class="max-w-2xl">
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-    <form method="POST" action="/admin/settings" enctype="multipart/form-data" class="space-y-6">
-      <!-- Logo -->
-      <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-3">School Logo</label>
-        <div class="flex items-center gap-4">
-          <% if (school.logo_url) { %>
-            <img src="<%= school.logo_url %>" alt="logo" class="w-16 h-16 rounded-xl object-cover border border-gray-200" />
-          <% } else { %>
-            <div class="w-16 h-16 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <span class="text-indigo-600 font-bold text-xl"><%= school.name[0] %></span>
+<div class="mx-auto max-w-5xl">
+  <div class="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+    <section class="rounded-[28px] border border-white/70 bg-white/90 p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+      <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Live preview</p>
+      <div class="mt-4 overflow-hidden rounded-[28px] border border-gray-100 shadow-sm">
+        <div class="p-5 text-white" style="background: linear-gradient(135deg, <%= schoolTheme.primary %>, <%= schoolTheme.secondary %>);">
+          <div class="flex items-center gap-3">
+            <% if (school.logo_url) { %>
+              <img src="<%= school.logo_url %>" alt="logo" class="h-12 w-12 rounded-2xl object-cover bg-white/20 p-1" />
+            <% } else { %>
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 font-bold"><%= school.name[0] %></div>
+            <% } %>
+            <div>
+              <h2 class="text-lg font-semibold"><%= school.name %></h2>
+              <p class="text-sm text-white/80"><%= schoolPreferences.uiDensity === 'compact' ? 'Compact UI' : 'Comfortable UI' %> · <%= schoolPreferences.dateLocale %></p>
             </div>
-          <% } %>
-          <input type="file" name="logo" accept="image/*"
-                 class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+          </div>
+        </div>
+        <div class="space-y-4 p-5" style="background: <%= schoolTheme.surface %>;">
+          <div class="rounded-2xl bg-white p-4 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-800">Primary</span>
+              <span class="rounded-full px-3 py-1 text-xs font-semibold text-white" style="background: <%= schoolTheme.primary %>;"><%= schoolTheme.primary %></span>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <div class="h-10 flex-1 rounded-2xl" style="background: <%= schoolTheme.primary %>;"></div>
+            <div class="h-10 flex-1 rounded-2xl" style="background: <%= schoolTheme.secondary %>;"></div>
+            <div class="h-10 flex-1 rounded-2xl" style="background: <%= schoolTheme.accent %>;"></div>
+          </div>
         </div>
       </div>
+    </section>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">School Name</label>
-        <input type="text" name="name" value="<%= school.name %>" required
-               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-      </div>
-
-      <div class="grid grid-cols-2 gap-4">
+    <section class="rounded-[28px] border border-white/70 bg-white/90 p-8 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+      <form method="POST" action="/admin/settings" enctype="multipart/form-data" class="space-y-8">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-          <input type="tel" name="phone" value="<%= school.phone || '' %>"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Identity</p>
+          <div class="mt-4 space-y-6">
+            <div>
+              <label class="mb-3 block text-sm font-semibold text-gray-700">School Logo</label>
+              <div class="flex items-center gap-4">
+                <% if (school.logo_url) { %>
+                  <img src="<%= school.logo_url %>" alt="logo" class="h-16 w-16 rounded-2xl object-cover border border-gray-200" />
+                <% } else { %>
+                  <div class="flex h-16 w-16 items-center justify-center rounded-2xl font-bold text-xl" style="background: <%= hexToRgba(schoolTheme.primary, 0.16) %>; color: <%= schoolTheme.primary %>;">
+                    <%= school.name[0] %>
+                  </div>
+                <% } %>
+                <input type="file" name="logo" accept="image/*"
+                       class="text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                       style="--file-bg: <%= schoolTheme.primary %>;" />
+              </div>
+            </div>
+
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">School Name</label>
+              <input type="text" name="name" value="<%= school.name %>" required
+                     class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Phone</label>
+                <input type="tel" name="phone" value="<%= school.phone || '' %>"
+                       class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" name="email" value="<%= school.email || '' %>"
+                       class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Website</label>
+              <input type="url" name="website" value="<%= school.website || '' %>" placeholder="https://"
+                     class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Address</label>
+              <textarea name="address" rows="2"
+                        class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500"><%= school.address || '' %></textarea>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Term Start</label>
+                <input type="date" name="termStart" value="<%= school.term_start || '' %>"
+                       class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Term End</label>
+                <input type="date" name="termEnd" value="<%= school.term_end || '' %>"
+                       class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+          </div>
         </div>
+
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input type="email" name="email" value="<%= school.email || '' %>"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Theme Palette</p>
+          <div class="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Primary Color</label>
+              <input type="color" name="brandPrimary" value="<%= schoolTheme.primary %>"
+                     class="h-12 w-full rounded-2xl border border-gray-300 bg-white p-2 shadow-sm" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Secondary Color</label>
+              <input type="color" name="brandSecondary" value="<%= schoolTheme.secondary %>"
+                     class="h-12 w-full rounded-2xl border border-gray-300 bg-white p-2 shadow-sm" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Accent Color</label>
+              <input type="color" name="accentColor" value="<%= schoolTheme.accent %>"
+                     class="h-12 w-full rounded-2xl border border-gray-300 bg-white p-2 shadow-sm" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Surface Tint</label>
+              <input type="color" name="surfaceTint" value="<%= schoolTheme.surface %>"
+                     class="h-12 w-full rounded-2xl border border-gray-300 bg-white p-2 shadow-sm" />
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
-        <input type="url" name="website" value="<%= school.website || '' %>" placeholder="https://"
-               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-        <textarea name="address" rows="2"
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"><%= school.address || '' %></textarea>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Term Start</label>
-          <input type="date" name="termStart" value="<%= school.term_start || '' %>"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Preferences</p>
+          <div class="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Date Locale</label>
+              <select name="dateLocale"
+                      class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500">
+                <option value="en-GB" <%= schoolPreferences.dateLocale === 'en-GB' ? 'selected' : '' %>>Day / Month / Year</option>
+                <option value="en-US" <%= schoolPreferences.dateLocale === 'en-US' ? 'selected' : '' %>>Month / Day / Year</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Interface Density</label>
+              <select name="uiDensity"
+                      class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500">
+                <option value="comfortable" <%= schoolPreferences.uiDensity === 'comfortable' ? 'selected' : '' %>>Comfortable</option>
+                <option value="compact" <%= schoolPreferences.uiDensity === 'compact' ? 'selected' : '' %>>Compact</option>
+              </select>
+            </div>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Term End</label>
-          <input type="date" name="termEnd" value="<%= school.term_end || '' %>"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-        </div>
-      </div>
 
-      <div class="flex justify-end">
-        <button type="submit" class="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition text-sm">
-          Save Changes
-        </button>
-      </div>
-    </form>
+        <div class="flex justify-end">
+          <button type="submit" class="rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:bg-indigo-700">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </section>
   </div>
 </div>

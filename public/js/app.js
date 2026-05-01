@@ -1,6 +1,14 @@
 // SchoolHub Client-Side JS
 
 document.addEventListener('DOMContentLoaded', () => {
+  function getOpenModals() {
+    return Array.from(document.querySelectorAll('.modal-overlay')).filter(modal => !modal.classList.contains('hidden'));
+  }
+
+  function syncModalState() {
+    document.body.classList.toggle('overflow-hidden', getOpenModals().length > 0);
+  }
+
   // Sidebar toggle (mobile)
   const toggle = document.getElementById('sidebar-toggle');
   const sidebar = document.getElementById('sidebar');
@@ -77,6 +85,31 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUnreadBadge();
     setInterval(updateUnreadBadge, 30000);
   }
+
+  // Shared modal behavior
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+        syncModalState();
+      }
+    });
+
+    const observer = new MutationObserver(syncModalState);
+    observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const openModals = getOpenModals();
+    const topModal = openModals[openModals.length - 1];
+    if (topModal) {
+      topModal.classList.add('hidden');
+      syncModalState();
+    }
+  });
+
+  syncModalState();
 
   // Confirm destructive actions
   document.querySelectorAll('[data-confirm]').forEach(el => {

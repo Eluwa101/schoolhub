@@ -1,77 +1,142 @@
 <%- include('../partials/header') %>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <!-- Class info -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-    <h2 class="font-semibold text-gray-900 mb-4">Class Info</h2>
-    <dl class="space-y-3 text-sm">
-      <div><dt class="text-gray-400">Grade Level</dt><dd class="font-medium"><%= cls.grade_level || '—' %></dd></div>
-      <div><dt class="text-gray-400">Academic Year</dt><dd class="font-medium"><%= cls.academic_year %></dd></div>
-      <div><dt class="text-gray-400">Class Teacher</dt><dd class="font-medium"><%= cls.class_teacher ? `${cls.class_teacher.first_name} ${cls.class_teacher.last_name}` : '—' %></dd></div>
-      <div><dt class="text-gray-400">Subjects</dt>
-        <dd class="mt-1 flex flex-wrap gap-1">
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="rounded-[28px] border border-white/70 bg-white/90 p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <h2 class="text-lg font-semibold text-gray-900">Class Info</h2>
+      <button type="button"
+              onclick="document.getElementById('edit-class-modal').classList.remove('hidden')"
+              class="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100">
+        Edit
+      </button>
+    </div>
+    <dl class="space-y-4 text-sm">
+      <div><dt class="text-gray-400">Grade Level</dt><dd class="mt-1 font-medium text-gray-900"><%= cls.grade_level || '-' %></dd></div>
+      <div><dt class="text-gray-400">Academic Year</dt><dd class="mt-1 font-medium text-gray-900"><%= cls.academic_year %></dd></div>
+      <div><dt class="text-gray-400">Class Teacher</dt><dd class="mt-1 font-medium text-gray-900"><%= cls.class_teacher ? `${cls.class_teacher.first_name} ${cls.class_teacher.last_name}` : '-' %></dd></div>
+      <div>
+        <dt class="text-gray-400">Subjects</dt>
+        <dd class="mt-2 flex flex-wrap gap-2">
           <% if (cls.class_subjects && cls.class_subjects.length) { %>
             <% cls.class_subjects.forEach(cs => { %>
-              <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full"><%= cs.subjects?.name %></span>
+              <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700"><%= cs.subjects?.name %></span>
             <% }) %>
-          <% } else { %><span class="text-gray-400">None assigned</span><% } %>
+          <% } else { %>
+          <span class="text-gray-400">None assigned yet</span>
+          <% } %>
         </dd>
       </div>
     </dl>
   </div>
 
-  <!-- Enroll students -->
-  <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="font-semibold text-gray-900">Enrolled Students (<%= students.length %>)</h2>
+  <div class="lg:col-span-2 rounded-[28px] border border-white/70 bg-white/90 p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+    <div class="mb-4 flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">Enrolled Students</h2>
+        <p class="text-sm text-gray-400"><%= students.length %> student<%= students.length === 1 ? '' : 's' %> currently assigned</p>
+      </div>
       <button onclick="document.getElementById('enroll-modal').classList.remove('hidden')"
-              class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700">
+              class="rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:bg-indigo-700">
         + Enroll Students
       </button>
     </div>
 
     <% if (students && students.length) { %>
-      <div class="space-y-2 max-h-96 overflow-y-auto">
+      <div class="space-y-2">
         <% students.forEach(enrollment => { %>
-          <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-              <span class="text-xs font-semibold text-green-700"><%= enrollment.student?.first_name[0] %></span>
+          <div class="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-100 text-sm font-semibold text-green-700">
+              <%= enrollment.student?.first_name?.[0] || '?' %>
             </div>
-            <span class="text-sm text-gray-800"><%= enrollment.student?.first_name %> <%= enrollment.student?.last_name %></span>
-            <span class="ml-auto text-xs text-gray-400"><%= formatDate(enrollment.enrolled_at) %></span>
+            <div>
+              <p class="text-sm font-semibold text-gray-900"><%= enrollment.student?.first_name %> <%= enrollment.student?.last_name %></p>
+              <p class="text-xs text-gray-400">Joined <%= formatDate(enrollment.enrolled_at) %></p>
+            </div>
+            <form method="POST" action="/admin/classes/<%= cls.id %>/students/<%= enrollment.student?.id %>" class="ml-auto inline">
+              <input type="hidden" name="_method" value="DELETE" />
+              <button type="submit"
+                      onclick="return confirm('Remove <%= enrollment.student?.first_name %> from this class?')"
+                      class="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50 hover:text-red-700">
+                Remove
+              </button>
+            </form>
           </div>
         <% }) %>
       </div>
     <% } else { %>
-      <p class="text-sm text-gray-400 text-center py-8">No students enrolled yet</p>
+      <p class="py-10 text-center text-sm text-gray-400">No students enrolled yet.</p>
     <% } %>
   </div>
 </div>
 
-<!-- Enroll Modal -->
+<div id="edit-class-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl">
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900">Edit <%= cls.name %></h2>
+        <p class="text-sm text-gray-500">Update the details that teachers, students, and reports rely on.</p>
+      </div>
+      <button type="button" onclick="document.getElementById('edit-class-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">x</button>
+    </div>
+    <form method="POST" action="/admin/classes/<%= cls.id %>" class="space-y-4">
+      <input type="hidden" name="_method" value="PUT" />
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Class Name</label>
+        <input type="text" name="name" required value="<%= cls.name %>"
+               class="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Grade Level</label>
+        <input type="text" name="gradeLevel" value="<%= cls.grade_level || '' %>"
+               class="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Academic Year</label>
+        <input type="text" name="academicYear" required value="<%= cls.academic_year %>"
+               class="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Class Teacher</label>
+        <select name="classTeacherId" class="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="">- Select Teacher -</option>
+          <% if (teachers) { teachers.forEach(t => { %>
+            <option value="<%= t.id %>" <%= cls.class_teacher?.id === t.id ? 'selected' : '' %>><%= t.first_name %> <%= t.last_name %></option>
+          <% }) } %>
+        </select>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('edit-class-modal').classList.add('hidden')" class="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="submit" class="flex-1 rounded-full bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="enroll-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md m-4 max-h-screen overflow-y-auto">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-lg font-bold">Enroll Students</h2>
-      <button onclick="document.getElementById('enroll-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">✕</button>
+  <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl">
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900">Enroll Students</h2>
+        <p class="text-sm text-gray-500">Add more students to <strong><%= cls.name %></strong>.</p>
+      </div>
+      <button type="button" onclick="document.getElementById('enroll-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">x</button>
     </div>
     <form method="POST" action="/admin/classes/<%= cls.id %>/enroll-students" class="space-y-4">
-      <p class="text-sm text-gray-500">Select students to enroll in <strong><%= cls.name %></strong>:</p>
-      <div class="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
+      <div class="max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-gray-200 p-3">
         <% if (allStudents && allStudents.length) { %>
-          <% allStudents.forEach(s => { %>
-            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 p-1 rounded">
-              <input type="checkbox" name="studentIds" value="<%= s.id %>" class="rounded border-gray-300 text-indigo-600" />
-              <%= s.first_name %> <%= s.last_name %>
+          <% allStudents.forEach(student => { %>
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl p-2 transition hover:bg-gray-50">
+              <input type="checkbox" name="studentIds" value="<%= student.id %>" class="rounded border-gray-300 text-indigo-600" />
+              <span class="text-sm text-gray-700"><%= student.first_name %> <%= student.last_name %></span>
             </label>
           <% }) %>
         <% } else { %>
-          <p class="text-sm text-gray-400">No students available to enroll.</p>
+          <p class="text-sm text-gray-400">All active students are already enrolled in this class.</p>
         <% } %>
       </div>
       <div class="flex gap-3 pt-2">
-        <button type="button" onclick="document.getElementById('enroll-modal').classList.add('hidden')" class="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm">Cancel</button>
-        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold">Enroll Selected</button>
+        <button type="button" onclick="document.getElementById('enroll-modal').classList.add('hidden')" class="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="submit" class="flex-1 rounded-full bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Enroll Selected</button>
       </div>
     </form>
   </div>

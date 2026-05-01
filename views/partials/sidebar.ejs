@@ -5,6 +5,7 @@ const adminLinks = [
   { href: '/admin/users', label: 'Users', icon: 'users' },
   { href: '/admin/classes', label: 'Classes', icon: 'academic-cap' },
   { href: '/admin/subjects', label: 'Subjects', icon: 'book-open' },
+  { href: '/admin/messages', label: 'Messages', icon: 'mail' },
   { href: '/admin/timetable', label: 'Timetable', icon: 'calendar' },
   { href: '/admin/announcements', label: 'Announcements', icon: 'megaphone' },
   { href: '/admin/reports', label: 'Reports', icon: 'chart-bar' },
@@ -63,12 +64,12 @@ function iconSvg(name) {
 }
 %>
 
-<aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col pt-16 lg:pt-0">
-  <div class="flex-1 overflow-y-auto py-4 px-3">
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full transform flex-col border-r border-white/70 bg-white/82 shadow-[18px_0_60px_-42px_rgba(15,23,42,0.4)] backdrop-blur-xl transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:pt-0 pt-16">
+  <div class="flex-1 overflow-y-auto px-3 py-4">
     <nav class="space-y-1">
       <% links.forEach(link => { %>
         <a href="<%= link.href %>"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors <%= currentPath && currentPath.startsWith(link.href) ? `bg-${color}-50 text-${color}-700` : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' %>">
+           class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all <%= currentPath && currentPath.startsWith(link.href) ? `bg-${color}-50 text-${color}-700 shadow-sm ring-1 ring-${color}-100` : 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm' %>">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <%- iconSvg(link.icon) %>
           </svg>
@@ -78,10 +79,14 @@ function iconSvg(name) {
     </nav>
   </div>
 
-  <div class="p-4 border-t border-gray-200">
-    <div class="flex items-center gap-2">
-      <div class="w-2 h-2 bg-green-400 rounded-full"></div>
-      <span class="text-xs text-gray-500 capitalize"><%= role.replace('_', ' ') %></span>
+  <div class="border-t border-white/70 p-4">
+    <div class="rounded-2xl px-3 py-3 text-white shadow-lg" style="background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary)); box-shadow: 0 18px 36px -24px var(--tenant-primary-soft);">
+      <div class="flex items-center gap-2">
+        <div class="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
+        <span class="text-xs font-semibold uppercase tracking-[0.24em] text-white/75">Live</span>
+      </div>
+      <p class="mt-2 text-sm font-semibold capitalize"><%= role.replace('_', ' ') %></p>
+      <p class="text-xs text-white/60">Everything you need for today is one tap away.</p>
     </div>
   </div>
 </aside>

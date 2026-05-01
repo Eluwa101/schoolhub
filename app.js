@@ -118,12 +118,15 @@ app.use((req, res, next) => {
   res.locals.error = req.flash('error');
   res.locals.info = req.flash('info');
   res.locals.currentPath = req.path;
-  res.locals.formatDate = helpers.formatDate;
-  res.locals.formatDateTime = helpers.formatDateTime;
+  const dateLocale = res.locals.schoolPreferences?.dateLocale || 'en-GB';
+  res.locals.formatDate = (date) => helpers.formatDate(date, dateLocale);
+  res.locals.formatDateTime = (date) => helpers.formatDateTime(date, dateLocale);
   res.locals.formatTime = helpers.formatTime;
   res.locals.dayName = helpers.dayName;
   res.locals.letterGrade = helpers.letterGrade;
   res.locals.truncate = helpers.truncate;
+  res.locals.rolePrefix = helpers.rolePrefix;
+  res.locals.hexToRgba = helpers.hexToRgba;
   res.locals.appUrl = process.env.APP_URL || 'http://localhost:3000';
   next();
 });

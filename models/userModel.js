@@ -25,6 +25,26 @@ async function getProfilesBySchool(schoolId, { role, page = 1, limit = 20 } = {}
   return { users: data, total: count };
 }
 
+async function getActiveProfilesBySchool(schoolId, { roles = [], excludeUserId = null } = {}) {
+  let query = supabaseAdmin
+    .from('profiles')
+    .select('id, role, first_name, last_name, phone, avatar_url, is_active')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .order('last_name', { ascending: true });
+
+  if (excludeUserId) query = query.neq('id', excludeUserId);
+  if (roles.length === 1) {
+    query = query.eq('role', roles[0]);
+  } else if (roles.length > 1) {
+    query = query.in('role', roles);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
 async function createProfile({ id, schoolId, role, firstName, lastName, phone, avatarUrl }) {
   const { data, error } = await supabaseAdmin
     .from('profiles')
@@ -100,6 +120,7 @@ async function getStudentsBySchool(schoolId) {
 module.exports = {
   getProfileById,
   getProfilesBySchool,
+  getActiveProfilesBySchool,
   createProfile,
   updateProfile,
   toggleUserActive,

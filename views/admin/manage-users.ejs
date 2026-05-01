@@ -1,128 +1,183 @@
 <%- include('../partials/header') %>
 
-<!-- Invite Modal Trigger + Filter -->
-<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-  <div class="flex gap-2">
-    <% ['', 'teacher', 'student', 'parent', 'school_admin'].forEach(r => { %>
-      <a href="/admin/users<%= r ? '?role=' + r : '' %>"
-         class="px-3 py-1.5 rounded-lg text-sm font-medium transition <%= currentRole === r ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50' %>">
-        <%= r ? r.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()) : 'All' %>
-      </a>
-    <% }) %>
-  </div>
-  <button onclick="document.getElementById('invite-modal').classList.remove('hidden')"
-          class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-    </svg>
-    Invite User
-  </button>
-</div>
-
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-  <table class="min-w-full divide-y divide-gray-100">
-    <thead class="bg-gray-50">
-      <tr>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined</th>
-        <th class="px-6 py-3"></th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-50">
-      <% if (users && users.length) { %>
-        <% users.forEach(u => { %>
-          <tr class="hover:bg-gray-50 transition">
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-3">
-                <% if (u.avatar_url) { %>
-                  <img src="<%= u.avatar_url %>" class="w-8 h-8 rounded-full object-cover" />
-                <% } else { %>
-                  <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span class="text-xs font-semibold text-indigo-700"><%= u.first_name[0] %></span>
-                  </div>
-                <% } %>
-                <div>
-                  <p class="text-sm font-medium text-gray-900"><%= u.first_name %> <%= u.last_name %></p>
-                  <p class="text-xs text-gray-400"><%= u.phone || '' %></p>
-                </div>
-              </div>
-            </td>
-            <td class="px-6 py-4">
-              <span class="text-xs font-medium px-2.5 py-1 rounded-full capitalize
-                <%= u.role === 'school_admin' ? 'bg-indigo-100 text-indigo-700' :
-                    u.role === 'teacher' ? 'bg-blue-100 text-blue-700' :
-                    u.role === 'student' ? 'bg-green-100 text-green-700' :
-                    'bg-orange-100 text-orange-700' %>">
-                <%= u.role.replace('_', ' ') %>
-              </span>
-            </td>
-            <td class="px-6 py-4">
-              <span class="text-xs font-medium px-2.5 py-1 rounded-full <%= u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
-                <%= u.is_active ? 'Active' : 'Inactive' %>
-              </span>
-            </td>
-            <td class="px-6 py-4 text-xs text-gray-400"><%= formatDate(u.created_at) %></td>
-            <td class="px-6 py-4 text-right">
-              <div class="flex items-center justify-end gap-3">
-                <a href="/admin/users/<%= u.id %>" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition">Manage</a>
-                <form method="POST" action="/admin/users/<%= u.id %>/toggle-active" class="inline">
-                  <button type="submit"
-                          onclick="return confirm('<%= u.is_active ? 'Deactivate' : 'Activate' %> this user?')"
-                          class="text-xs text-gray-500 hover:text-indigo-600 transition">
-                    <%= u.is_active ? 'Deactivate' : 'Activate' %>
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
+<div class="space-y-6">
+  <section class="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex flex-wrap gap-2">
+        <% ['', 'teacher', 'student', 'parent', 'school_admin'].forEach(r => { %>
+          <a href="/admin/users<%= r ? '?role=' + r : '' %>"
+             class="rounded-full px-3 py-1.5 text-sm font-semibold transition <%= currentRole === r ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50' %>">
+            <%= r ? r.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()) : 'All' %>
+          </a>
         <% }) %>
-      <% } else { %>
-        <tr><td colspan="5" class="text-center py-12 text-gray-400">No users found</td></tr>
-      <% } %>
-    </tbody>
-  </table>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a href="/admin/users/import-template"
+           class="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+          Download CSV Template
+        </a>
+        <button type="button" onclick="document.getElementById('bulk-import-modal').classList.remove('hidden')"
+                class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+          Bulk Import
+        </button>
+        <button type="button" onclick="document.getElementById('invite-modal').classList.remove('hidden')"
+                class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:bg-indigo-700">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Invite User
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <% if (importReport) { %>
+    <section class="rounded-[28px] border border-emerald-100 bg-emerald-50/80 p-5 shadow-sm">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-500">Import Summary</p>
+          <h2 class="mt-1 text-xl font-semibold text-emerald-900">Your upload has been processed</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs font-semibold">
+          <span class="rounded-full bg-white px-3 py-1 text-emerald-700"><%= importReport.summary.processed %> processed</span>
+          <span class="rounded-full bg-white px-3 py-1 text-emerald-700"><%= importReport.summary.created %> created</span>
+          <span class="rounded-full bg-white px-3 py-1 text-emerald-700"><%= importReport.summary.enrolled %> enrolled</span>
+          <span class="rounded-full bg-white px-3 py-1 text-amber-700"><%= importReport.summary.skipped %> skipped</span>
+          <span class="rounded-full bg-white px-3 py-1 text-rose-700"><%= importReport.summary.errors %> errors</span>
+        </div>
+      </div>
+      <div class="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white">
+        <table class="min-w-full divide-y divide-gray-100">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Row</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Email</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Notes</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            <% importReport.rows.forEach(row => { %>
+              <tr>
+                <td class="px-4 py-3 text-sm text-gray-500"><%= row.row %></td>
+                <td class="px-4 py-3 text-sm font-medium text-gray-800"><%= row.email || '-' %></td>
+                <td class="px-4 py-3">
+                  <span class="rounded-full px-2.5 py-1 text-xs font-semibold <%= row.status === 'Created' ? 'bg-emerald-100 text-emerald-700' : row.status === 'Skipped' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700' %>">
+                    <%= row.status %>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-500"><%= row.note %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% } %>
+
+  <div class="overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+    <table class="min-w-full divide-y divide-gray-100">
+      <thead class="bg-gray-50/80">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Name</th>
+          <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Role</th>
+          <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Status</th>
+          <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Joined</th>
+          <th class="px-6 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        <% if (users && users.length) { %>
+          <% users.forEach(u => { %>
+            <tr class="transition hover:bg-indigo-50/30">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <% if (u.avatar_url) { %>
+                    <img src="<%= u.avatar_url %>" class="h-9 w-9 rounded-2xl object-cover" />
+                  <% } else { %>
+                    <div class="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-100 text-xs font-semibold text-indigo-700">
+                      <%= u.first_name[0] %>
+                    </div>
+                  <% } %>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900"><%= u.first_name %> <%= u.last_name %></p>
+                    <p class="text-xs text-gray-400"><%= u.phone || 'No phone number yet' %></p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize
+                  <%= u.role === 'school_admin' ? 'bg-indigo-100 text-indigo-700' :
+                      u.role === 'teacher' ? 'bg-blue-100 text-blue-700' :
+                      u.role === 'student' ? 'bg-green-100 text-green-700' :
+                      'bg-orange-100 text-orange-700' %>">
+                  <%= u.role.replace('_', ' ') %>
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="rounded-full px-2.5 py-1 text-xs font-semibold <%= u.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' %>">
+                  <%= u.is_active ? 'Active' : 'Inactive' %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-xs text-gray-400"><%= formatDate(u.created_at) %></td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-3">
+                  <a href="/admin/users/<%= u.id %>" class="text-xs font-semibold text-indigo-600 transition hover:text-indigo-800">Manage</a>
+                  <form method="POST" action="/admin/users/<%= u.id %>/toggle-active" class="inline">
+                    <button type="submit"
+                            onclick="return confirm('<%= u.is_active ? 'Deactivate' : 'Activate' %> this user?')"
+                            class="text-xs font-semibold text-gray-500 transition hover:text-indigo-600">
+                      <%= u.is_active ? 'Deactivate' : 'Activate' %>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="5" class="py-12 text-center text-gray-400">No users found</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+    <div class="flex items-center justify-between">
+      <p class="text-sm text-gray-500">Showing page <%= page %> of <%= totalPages %> (<%= total %> total)</p>
+      <div class="flex gap-2">
+        <% if (page > 1) { %>
+          <a href="/admin/users?page=<%= page - 1 %><%= currentRole ? '&role=' + currentRole : '' %>"
+             class="rounded-full border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Previous</a>
+        <% } %>
+        <% if (page < totalPages) { %>
+          <a href="/admin/users?page=<%= page + 1 %><%= currentRole ? '&role=' + currentRole : '' %>"
+             class="rounded-full border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Next</a>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
 </div>
 
-<!-- Pagination -->
-<% if (totalPages > 1) { %>
-  <div class="flex items-center justify-between mt-4">
-    <p class="text-sm text-gray-500">Showing page <%= page %> of <%= totalPages %> (<%= total %> total)</p>
-    <div class="flex gap-2">
-      <% if (page > 1) { %>
-        <a href="/admin/users?page=<%= page - 1 %><%= currentRole ? '&role=' + currentRole : '' %>"
-           class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Previous</a>
-      <% } %>
-      <% if (page < totalPages) { %>
-        <a href="/admin/users?page=<%= page + 1 %><%= currentRole ? '&role=' + currentRole : '' %>"
-           class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Next</a>
-      <% } %>
-    </div>
-  </div>
-<% } %>
-
-<!-- Invite Modal -->
-<div id="invite-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md m-4">
-    <div class="flex items-center justify-between mb-6">
+<div id="invite-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl">
+    <div class="mb-6 flex items-center justify-between">
       <h2 class="text-lg font-bold text-gray-900">Invite User</h2>
-      <button onclick="document.getElementById('invite-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <button type="button" onclick="document.getElementById('invite-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
     <form method="POST" action="/admin/users/invite" class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Email Address</label>
         <input type="email" name="email" required
-               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+               class="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Role</label>
         <select name="role" required
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                class="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
           <option value="teacher">Teacher</option>
           <option value="student">Student</option>
           <option value="parent">Parent</option>
@@ -131,13 +186,57 @@
       </div>
       <div class="flex gap-3 pt-2">
         <button type="button" onclick="document.getElementById('invite-modal').classList.add('hidden')"
-                class="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                class="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
           Cancel
         </button>
-        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+        <button type="submit" class="flex-1 rounded-full bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
           Send Invite
         </button>
       </div>
     </form>
+  </div>
+</div>
+
+<div id="bulk-import-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="w-full max-w-2xl rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl">
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900">Bulk Import Users</h2>
+        <p class="text-sm text-gray-500">Upload a CSV exported from Excel or Google Sheets to create users in bulk.</p>
+      </div>
+      <button type="button" onclick="document.getElementById('bulk-import-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">x</button>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+        <p class="text-sm font-semibold text-gray-900">Supported columns</p>
+        <ul class="mt-3 space-y-2 text-sm text-gray-600">
+          <li><code class="rounded bg-white px-2 py-1 text-xs">email</code> Required for every row.</li>
+          <li><code class="rounded bg-white px-2 py-1 text-xs">first_name</code> and <code class="rounded bg-white px-2 py-1 text-xs">last_name</code> Required.</li>
+          <li><code class="rounded bg-white px-2 py-1 text-xs">role</code> Use `student`, `teacher`, `parent`, or `school_admin`.</li>
+          <li><code class="rounded bg-white px-2 py-1 text-xs">phone</code> Optional.</li>
+          <li><code class="rounded bg-white px-2 py-1 text-xs">class_name</code> Optional for students. Must match an existing class.</li>
+          <li><code class="rounded bg-white px-2 py-1 text-xs">academic_year</code> Optional for student enrollment.</li>
+        </ul>
+      </div>
+
+      <form method="POST" action="/admin/users/import" enctype="multipart/form-data" class="space-y-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">CSV File</label>
+          <input type="file" name="spreadsheet" accept=".csv,text/csv" required
+                 class="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none file:mr-4 file:rounded-full file:border-0 file:bg-emerald-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-200" />
+        </div>
+        <p class="text-xs leading-6 text-gray-500">Each imported user receives a real account immediately. SchoolHub also sends a password setup email using the built-in reset flow.</p>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="document.getElementById('bulk-import-modal').classList.add('hidden')"
+                  class="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-white">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 rounded-full bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+            Upload and Import
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>

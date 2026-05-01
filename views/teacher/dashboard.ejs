@@ -36,10 +36,10 @@
       <% if (recentMessages && recentMessages.length) { %>
         <div class="space-y-2">
           <% recentMessages.forEach(msg => { %>
-            <div class="p-3 rounded-lg bg-gray-50 hover:bg-blue-50 cursor-pointer transition" onclick="location.href='/teacher/messages'">
-              <p class="text-sm font-medium text-gray-800 truncate"><%= msg.sender?.first_name %> <%= msg.sender?.last_name %></p>
+            <div class="p-3 rounded-lg bg-gray-50 hover:bg-blue-50 cursor-pointer transition" onclick="location.href='/teacher/messages?tab=inbox&messageId=<%= msg.id %>'">
+              <p class="text-sm font-medium text-gray-800 truncate"><%= msg.counterpart?.first_name %> <%= msg.counterpart?.last_name %></p>
               <p class="text-xs text-gray-500 truncate"><%= msg.subject %></p>
-              <% if (!msg.is_read) { %><span class="inline-block w-2 h-2 bg-blue-500 rounded-full mt-1"></span><% } %>
+              <% if (msg.unreadCount > 0) { %><span class="inline-block w-2 h-2 bg-blue-500 rounded-full mt-1"></span><% } %>
             </div>
           <% }) %>
         </div>

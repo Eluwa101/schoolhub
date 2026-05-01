@@ -9,21 +9,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
+  <% const tenantTheme = schoolTheme || { primary: '#4f46e5', secondary: '#0ea5e9', accent: '#14b8a6', surface: '#f8fafc' }; %>
+  <style>
+    :root {
+      --tenant-primary: <%= tenantTheme.primary %>;
+      --tenant-secondary: <%= tenantTheme.secondary %>;
+      --tenant-accent: <%= tenantTheme.accent %>;
+      --tenant-surface: <%= tenantTheme.surface %>;
+      --tenant-primary-soft: <%= hexToRgba(tenantTheme.primary, 0.16) %>;
+      --tenant-secondary-soft: <%= hexToRgba(tenantTheme.secondary, 0.12) %>;
+      --tenant-accent-soft: <%= hexToRgba(tenantTheme.accent, 0.16) %>;
+    }
+  </style>
   <%- style %>
 </head>
-<body class="bg-gray-50 font-inter text-gray-900">
+<body class="app-body font-inter text-gray-900 antialiased density-<%= schoolPreferences?.uiDensity || 'comfortable' %>">
 
 <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+  <div class="pointer-events-none fixed inset-0 tenant-app-aurora"></div>
   <%- include('partials/navbar') %>
-  <div class="flex h-screen overflow-hidden pt-16">
+  <div class="relative flex h-screen overflow-hidden pt-16">
     <%- include('partials/sidebar') %>
-    <main class="flex-1 overflow-y-auto p-6 lg:p-8">
+    <main class="relative flex-1 overflow-y-auto p-6 lg:p-8">
       <%- include('partials/flash') %>
       <%- body %>
     </main>
   </div>
 <% } else { %>
-  <main class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100">
+  <main class="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top_right,_rgba(79,70,229,0.18),transparent_30%),linear-gradient(135deg,#eef2ff_0%,#eff6ff_48%,#f8fafc_100%)] px-4 py-10">
     <%- include('partials/flash') %>
     <%- body %>
   </main>

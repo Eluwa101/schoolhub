@@ -11,6 +11,16 @@ async function getSubjectsBySchool(schoolId, { page = 1, limit = 20 } = {}) {
   return { subjects: data, total: count };
 }
 
+async function getAllSubjectsBySchool(schoolId) {
+  const { data, error } = await supabaseAdmin
+    .from('subjects')
+    .select('*')
+    .eq('school_id', schoolId)
+    .order('name');
+  if (error) throw error;
+  return data;
+}
+
 async function getSubjectById(id, schoolId) {
   const { data, error } = await supabaseAdmin
     .from('subjects')
@@ -90,6 +100,7 @@ async function getSubjectsForTeacher(teacherId, schoolId) {
 
 module.exports = {
   getSubjectsBySchool,
+  getAllSubjectsBySchool,
   getSubjectById,
   createSubject,
   updateSubject,

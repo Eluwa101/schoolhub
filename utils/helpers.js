@@ -1,5 +1,17 @@
 const slugifyLib = require('slugify');
 
+const DEFAULT_SCHOOL_THEME = {
+  primary: '#4f46e5',
+  secondary: '#0ea5e9',
+  accent: '#14b8a6',
+  surface: '#f8fafc',
+};
+
+const DEFAULT_SCHOOL_PREFERENCES = {
+  dateLocale: 'en-GB',
+  uiDensity: 'comfortable',
+};
+
 function slugify(text) {
   return slugifyLib(text, { lower: true, strict: true });
 }
@@ -77,6 +89,44 @@ function truncate(str, maxLength = 100) {
   return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
 }
 
+function normalizeHex(color, fallback) {
+  const value = String(color || '').trim();
+  if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
+  return fallback;
+}
+
+function normalizeSchoolTheme(theme = {}) {
+  return {
+    primary: normalizeHex(theme.primary, DEFAULT_SCHOOL_THEME.primary),
+    secondary: normalizeHex(theme.secondary, DEFAULT_SCHOOL_THEME.secondary),
+    accent: normalizeHex(theme.accent, DEFAULT_SCHOOL_THEME.accent),
+    surface: normalizeHex(theme.surface, DEFAULT_SCHOOL_THEME.surface),
+  };
+}
+
+function normalizeSchoolPreferences(preferences = {}) {
+  const dateLocale = ['en-GB', 'en-US'].includes(preferences.dateLocale)
+    ? preferences.dateLocale
+    : DEFAULT_SCHOOL_PREFERENCES.dateLocale;
+  const uiDensity = ['comfortable', 'compact'].includes(preferences.uiDensity)
+    ? preferences.uiDensity
+    : DEFAULT_SCHOOL_PREFERENCES.uiDensity;
+
+  return {
+    dateLocale,
+    uiDensity,
+  };
+}
+
+function hexToRgba(hex, alpha = 1) {
+  const normalized = normalizeHex(hex, '#4f46e5').replace('#', '');
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // Maps DB role values to URL route prefix (school_admin → admin)
 function rolePrefix(role) {
   if (role === 'school_admin' || role === 'super_admin') return 'admin';
@@ -84,6 +134,8 @@ function rolePrefix(role) {
 }
 
 module.exports = {
+  DEFAULT_SCHOOL_THEME,
+  DEFAULT_SCHOOL_PREFERENCES,
   slugify,
   formatDate,
   formatDateTime,
@@ -93,5 +145,8 @@ module.exports = {
   letterGrade,
   paginate,
   truncate,
+  normalizeSchoolTheme,
+  normalizeSchoolPreferences,
+  hexToRgba,
   rolePrefix,
 };

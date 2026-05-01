@@ -1,7 +1,7 @@
 const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const { supabase, supabaseAdmin } = require('../utils/supabaseClient');
-const { createProfile, getProfileById } = require('../models/userModel');
+const { createProfile, getProfileById, updateProfile } = require('../models/userModel');
 const { createSchool, getSchoolBySlug } = require('../models/schoolModel');
 const { verifyInviteToken, markTokenUsed } = require('../utils/inviteToken');
 const { slugify, rolePrefix } = require('../utils/helpers');
@@ -341,6 +341,55 @@ async function postResetPassword(req, res, next) {
   }
 }
 
+async function getProfileSettings(req, res, next) {
+  try {
+    const profile = await getProfileById(req.user.userId);
+    res.render('auth/profile', {
+      title: 'My Profile',
+      profile,
+      layout: 'layout',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postProfileSettings(req, res, next) {
+  try {
+    const { firstName, lastName, phone } = req.body;
+    const updates = {
+      first_name: firstName?.trim() || req.user.firstName,
+      last_name: lastName?.trim() || req.user.lastName,
+      phone: phone?.trim() || null,
+    };
+
+    if (req.file) {
+      const fileName = `${req.schoolId}/avatars/${req.user.userId}/${Date.now()}-${req.file.originalname}`;
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('schoolhub')
+        .upload(fileName, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+
+      if (!uploadError) {
+        const { data: urlData } = supabaseAdmin.storage.from('schoolhub').getPublicUrl(fileName);
+        updates.avatar_url = urlData.publicUrl;
+      }
+    }
+
+    const profile = await updateProfile(req.user.userId, updates);
+    if (req.session?.user) {
+      req.session.user.firstName = profile.first_name;
+      req.session.user.lastName = profile.last_name;
+      req.session.user.avatarUrl = profile.avatar_url || '';
+    }
+
+    req.flash('success', 'Profile updated successfully.');
+    res.redirect('/auth/profile');
+  } catch (err) {
+    req.flash('error', `Failed to update profile: ${err.message}`);
+    res.redirect('/auth/profile');
+  }
+}
+
 module.exports = {
   getLogin,
   postLogin,
@@ -358,4 +407,6 @@ module.exports = {
   postForgotPassword,
   getResetPassword,
   postResetPassword,
+  getProfileSettings,
+  postProfileSettings,
 };

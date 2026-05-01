@@ -65,6 +65,11 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Keep modal backdrops from intercepting clicks while "hidden" */
+.modal-overlay.hidden {
+  display: none !important;
+}
+
 /* Form focus styles */
 input:focus, select:focus, textarea:focus {
   outline: none;

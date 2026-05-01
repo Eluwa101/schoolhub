@@ -17,12 +17,12 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
           const email = profile.emails[0].value;
           const avatarUrl = profile.photos[0]?.value;
 
-          // Check if user exists in Supabase auth
-          const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-          const existingUser = existingUsers?.users?.find(u => u.email === email);
+          // Find user in Supabase auth by email
+          const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+          const existingUser = listData?.users?.find(u => u.email === email);
 
           if (existingUser) {
-            // User exists — get their profile
+            // User exists in auth — fetch their profile
             const { data: profileData } = await supabaseAdmin
               .from('profiles')
               .select('*, schools:school_id (id, name, slug)')
@@ -37,9 +37,18 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
                 isNewUser: false,
               });
             }
+
+            // Auth user exists but no profile yet — treat as new user without re-creating auth record
+            return done(null, {
+              id: existingUser.id,
+              email,
+              displayName: profile.displayName,
+              avatarUrl,
+              isNewUser: true,
+            });
           }
 
-          // New user — create in Supabase Auth
+          // Brand new user — create in Supabase Auth
           const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email,
             email_confirm: true,

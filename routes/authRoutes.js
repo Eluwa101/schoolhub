@@ -22,7 +22,7 @@ router.post('/invite', inviteValidation, postInvite);
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/auth/login', session: false }),
+  passport.authenticate('google', { failureRedirect: '/auth/login', failureFlash: true, session: false }),
   googleCallback
 );
 

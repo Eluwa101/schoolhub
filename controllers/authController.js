@@ -233,7 +233,7 @@ async function googleCallback(req, res, next) {
       displayName: googleUser.displayName,
       avatarUrl: googleUser.avatarUrl,
     };
-    res.redirect('/auth/setup');
+    return req.session.save(() => res.redirect('/auth/setup'));
   } catch (err) {
     next(err);
   }

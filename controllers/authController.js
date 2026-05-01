@@ -116,7 +116,8 @@ async function postRegister(req, res, next) {
     req.flash('success', `Welcome to SchoolHub! Your school "${schoolName}" has been created.`);
     req.session.save(() => res.redirect('/admin/dashboard'));
   } catch (err) {
-    next(err);
+    req.flash('error', `Registration failed: ${err.message}`);
+    res.redirect('/auth/register');
   }
 }
 
@@ -203,7 +204,8 @@ async function postInvite(req, res, next) {
     req.flash('success', `Welcome to ${invite.schools.name}!`);
     req.session.save(() => res.redirect(`/${profile.role}/dashboard`));
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to complete registration: ${err.message}`);
+    res.redirect(`/auth/invite?token=${req.body.token || ''}`);
   }
 }
 
@@ -273,7 +275,8 @@ async function postSetup(req, res, next) {
     req.flash('success', `Welcome! Your school "${schoolName}" has been created.`);
     req.session.save(() => res.redirect('/admin/dashboard'));
   } catch (err) {
-    next(err);
+    req.flash('error', `Setup failed: ${err.message}`);
+    res.redirect('/auth/setup');
   }
 }
 
@@ -298,7 +301,8 @@ async function postForgotPassword(req, res, next) {
     req.flash('success', 'If that email is registered, a reset link has been sent.');
     res.redirect('/auth/forgot-password');
   } catch (err) {
-    next(err);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/auth/forgot-password');
   }
 }
 
@@ -332,7 +336,8 @@ async function postResetPassword(req, res, next) {
     req.flash('success', 'Password updated. Please log in.');
     res.redirect('/auth/login');
   } catch (err) {
-    next(err);
+    req.flash('error', `Password reset failed: ${err.message}`);
+    res.redirect('/auth/reset-password');
   }
 }
 

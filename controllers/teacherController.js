@@ -101,7 +101,8 @@ async function postAttendance(req, res, next) {
     req.flash('success', `Attendance saved for ${records.length} students.`);
     res.redirect(`/teacher/attendance/${classId}?date=${date}${subjectId ? `&subjectId=${subjectId}` : ''}`);
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to save attendance: ${err.message}`);
+    res.redirect(`/teacher/attendance/${req.params.classId}`);
   }
 }
 
@@ -158,7 +159,9 @@ async function postGrade(req, res, next) {
     req.flash('success', 'Grade saved.');
     res.redirect(`/teacher/grades/${classId}/${subjectId}?term=${term}&academicYear=${academicYear}`);
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to save grade: ${err.message}`);
+    const { classId, subjectId, term, academicYear } = req.body;
+    res.redirect(`/teacher/grades/${classId}/${subjectId}?term=${term || ''}&academicYear=${academicYear || ''}`);
   }
 }
 
@@ -238,7 +241,8 @@ async function postAssignment(req, res, next) {
     req.flash('success', 'Assignment created.');
     res.redirect('/teacher/assignments');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to create assignment: ${err.message}`);
+    res.redirect('/teacher/assignments');
   }
 }
 
@@ -261,7 +265,8 @@ async function postGradeSubmission(req, res, next) {
     req.flash('success', 'Submission graded.');
     res.redirect(`/teacher/assignments/${assignmentId}/submissions`);
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to grade submission: ${err.message}`);
+    res.redirect(`/teacher/assignments/${req.params.id}/submissions`);
   }
 }
 
@@ -321,7 +326,8 @@ async function postMessage(req, res, next) {
     req.flash('success', 'Message sent.');
     res.redirect('/teacher/messages');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to send message: ${err.message}`);
+    res.redirect('/teacher/messages');
   }
 }
 

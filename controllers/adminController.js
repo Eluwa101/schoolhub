@@ -62,7 +62,8 @@ async function postSettings(req, res, next) {
     req.flash('success', 'School settings updated.');
     res.redirect('/admin/settings');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to update settings: ${err.message}`);
+    res.redirect('/admin/settings');
   }
 }
 
@@ -110,18 +111,23 @@ async function postInviteUser(req, res, next) {
     });
 
     const inviteUrl = `${process.env.APP_URL}/auth/invite?token=${invite.token}`;
-    await sendInviteEmail({
+    const emailSent = await sendInviteEmail({
       to: email,
       role,
       schoolName: school.name,
       inviteUrl,
       inviterName: `${inviter.firstName} ${inviter.lastName}`,
-    });
+    }).then(() => true).catch(() => false);
 
-    req.flash('success', `Invitation sent to ${email}.`);
+    if (emailSent) {
+      req.flash('success', `Invitation email sent to ${email}.`);
+    } else {
+      req.flash('success', `Invite created for ${email}. Share this link manually: ${inviteUrl}`);
+    }
     res.redirect('/admin/users');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to create invitation: ${err.message}`);
+    res.redirect('/admin/users');
   }
 }
 
@@ -132,7 +138,8 @@ async function toggleUserActiveHandler(req, res, next) {
     req.flash('success', 'User status updated.');
     res.redirect('/admin/users');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to update user status: ${err.message}`);
+    res.redirect('/admin/users');
   }
 }
 
@@ -158,11 +165,16 @@ async function getClasses(req, res, next) {
 async function postCreateClass(req, res, next) {
   try {
     const { name, gradeLevel, academicYear, classTeacherId } = req.body;
+    if (!name || !academicYear) {
+      req.flash('error', 'Class name and academic year are required.');
+      return res.redirect('/admin/classes');
+    }
     await createClass({ schoolId: req.schoolId, name, gradeLevel, academicYear, classTeacherId: classTeacherId || null });
     req.flash('success', `Class "${name}" created.`);
     res.redirect('/admin/classes');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to create class: ${err.message}`);
+    res.redirect('/admin/classes');
   }
 }
 
@@ -177,7 +189,8 @@ async function putClass(req, res, next) {
     req.flash('success', 'Class updated.');
     res.redirect('/admin/classes');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to update class: ${err.message}`);
+    res.redirect('/admin/classes');
   }
 }
 
@@ -187,7 +200,8 @@ async function deleteClassHandler(req, res, next) {
     req.flash('success', 'Class deleted.');
     res.redirect('/admin/classes');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to delete class: ${err.message}`);
+    res.redirect('/admin/classes');
   }
 }
 
@@ -218,7 +232,8 @@ async function postEnrollStudents(req, res, next) {
     req.flash('success', `${studentIds.length} student(s) enrolled.`);
     res.redirect(`/admin/classes/${classId}`);
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to enroll students: ${err.message}`);
+    res.redirect(`/admin/classes/${req.params.classId}`);
   }
 }
 
@@ -246,22 +261,32 @@ async function getSubjects(req, res, next) {
 async function postCreateSubject(req, res, next) {
   try {
     const { name, code, description } = req.body;
+    if (!name) {
+      req.flash('error', 'Subject name is required.');
+      return res.redirect('/admin/subjects');
+    }
     await createSubject({ schoolId: req.schoolId, name, code, description });
     req.flash('success', `Subject "${name}" created.`);
     res.redirect('/admin/subjects');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to create subject: ${err.message}`);
+    res.redirect('/admin/subjects');
   }
 }
 
 async function postAssignSubjectToClass(req, res, next) {
   try {
     const { classId, subjectId, teacherId } = req.body;
+    if (!classId || !subjectId) {
+      req.flash('error', 'Class and subject are required.');
+      return res.redirect('/admin/subjects');
+    }
     await assignSubjectToClass({ classId, subjectId, teacherId: teacherId || null });
     req.flash('success', 'Subject assigned to class.');
     res.redirect('/admin/subjects');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to assign subject: ${err.message}`);
+    res.redirect('/admin/subjects');
   }
 }
 
@@ -271,7 +296,8 @@ async function deleteSubjectHandler(req, res, next) {
     req.flash('success', 'Subject deleted.');
     res.redirect('/admin/subjects');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to delete subject: ${err.message}`);
+    res.redirect('/admin/subjects');
   }
 }
 
@@ -311,7 +337,11 @@ async function getTimetable(req, res, next) {
 async function postTimetable(req, res, next) {
   try {
     const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room } = req.body;
-    await supabaseAdmin.from('timetable').insert({
+    if (!classId || !subjectId || !dayOfWeek || !startTime || !endTime) {
+      req.flash('error', 'Class, subject, day, start time, and end time are required.');
+      return res.redirect(`/admin/timetable${classId ? `?classId=${classId}` : ''}`);
+    }
+    const { error } = await supabaseAdmin.from('timetable').insert({
       school_id: req.schoolId,
       class_id: classId,
       subject_id: subjectId,
@@ -321,10 +351,12 @@ async function postTimetable(req, res, next) {
       end_time: endTime,
       room: room || null,
     });
+    if (error) throw error;
     req.flash('success', 'Timetable entry added.');
     res.redirect(`/admin/timetable?classId=${classId}`);
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to add timetable entry: ${err.message}`);
+    res.redirect(`/admin/timetable${req.body.classId ? `?classId=${req.body.classId}` : ''}`);
   }
 }
 
@@ -332,11 +364,13 @@ async function deleteTimetableEntry(req, res, next) {
   try {
     const { id } = req.params;
     const { classId } = req.query;
-    await supabaseAdmin.from('timetable').delete().eq('id', id).eq('school_id', req.schoolId);
+    const { error } = await supabaseAdmin.from('timetable').delete().eq('id', id).eq('school_id', req.schoolId);
+    if (error) throw error;
     req.flash('success', 'Timetable entry removed.');
     res.redirect(`/admin/timetable${classId ? `?classId=${classId}` : ''}`);
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to remove timetable entry: ${err.message}`);
+    res.redirect(`/admin/timetable${req.query.classId ? `?classId=${req.query.classId}` : ''}`);
   }
 }
 
@@ -362,6 +396,10 @@ async function getAnnouncements(req, res, next) {
 async function postAnnouncement(req, res, next) {
   try {
     const { title, body, targetRole, targetClassId, isPinned } = req.body;
+    if (!title || !body) {
+      req.flash('error', 'Title and body are required.');
+      return res.redirect('/admin/announcements');
+    }
     await createAnnouncement({
       schoolId: req.schoolId,
       authorId: req.user.userId,
@@ -374,7 +412,8 @@ async function postAnnouncement(req, res, next) {
     req.flash('success', 'Announcement posted.');
     res.redirect('/admin/announcements');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to post announcement: ${err.message}`);
+    res.redirect('/admin/announcements');
   }
 }
 
@@ -384,7 +423,8 @@ async function deleteAnnouncementHandler(req, res, next) {
     req.flash('success', 'Announcement deleted.');
     res.redirect('/admin/announcements');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to delete announcement: ${err.message}`);
+    res.redirect('/admin/announcements');
   }
 }
 
@@ -445,7 +485,8 @@ async function exportReports(req, res, next) {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csvData);
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to export data: ${err.message}`);
+    res.redirect('/admin/reports');
   }
 }
 

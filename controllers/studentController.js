@@ -190,7 +190,8 @@ async function postSubmitAssignment(req, res, next) {
     req.flash('success', 'Assignment submitted.');
     res.redirect('/student/assignments');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to submit assignment: ${err.message}`);
+    res.redirect('/student/assignments');
   }
 }
 

@@ -150,7 +150,8 @@ async function postMessage(req, res, next) {
     req.flash('success', 'Message sent.');
     res.redirect('/parent/messages');
   } catch (err) {
-    next(err);
+    req.flash('error', `Failed to send message: ${err.message}`);
+    res.redirect('/parent/messages');
   }
 }
 

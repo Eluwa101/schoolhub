@@ -54,15 +54,16 @@ app.use(methodOverride('_method'));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session store — pg when DB URL is real, memory store for local dev
-const dbUrl = process.env.SUPABASE_DB_URL;
-const usePgStore = dbUrl && !dbUrl.includes('placeholder') && dbUrl.length > 50;
+// Session store — use pg only when explicitly enabled via USE_PG_SESSION=true.
+// Supabase direct connections (db.*.supabase.co:5432) require IPv6; use the
+// Session Mode pooler URL (aws-0-*.pooler.supabase.com:5432) for IPv4 networks.
+const usePgStore = process.env.USE_PG_SESSION === 'true' && !!process.env.SUPABASE_DB_URL;
 const sessionStore = usePgStore
-  ? new PgSession({ conString: dbUrl, tableName: 'session', createTableIfMissing: false })
+  ? new PgSession({ conString: process.env.SUPABASE_DB_URL, tableName: 'session', createTableIfMissing: false })
   : new session.MemoryStore();
 
 if (!usePgStore && process.env.NODE_ENV !== 'test') {
-  console.warn('[dev] Using in-memory session store — run migrations and set SUPABASE_DB_URL for persistence.');
+  console.warn('[dev] Using in-memory session store. Set USE_PG_SESSION=true with a pooler URL to persist sessions.');
 }
 
 app.use(session({

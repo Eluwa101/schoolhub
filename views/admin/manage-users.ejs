@@ -65,13 +65,16 @@
             </td>
             <td class="px-6 py-4 text-xs text-gray-400"><%= formatDate(u.created_at) %></td>
             <td class="px-6 py-4 text-right">
-              <form method="POST" action="/admin/users/<%= u.id %>/toggle-active" class="inline">
-                <button type="submit"
-                        onclick="return confirm('<%= u.is_active ? 'Deactivate' : 'Activate' %> this user?')"
-                        class="text-xs text-gray-500 hover:text-indigo-600 transition">
-                  <%= u.is_active ? 'Deactivate' : 'Activate' %>
-                </button>
-              </form>
+              <div class="flex items-center justify-end gap-3">
+                <a href="/admin/users/<%= u.id %>" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition">Manage</a>
+                <form method="POST" action="/admin/users/<%= u.id %>/toggle-active" class="inline">
+                  <button type="submit"
+                          onclick="return confirm('<%= u.is_active ? 'Deactivate' : 'Activate' %> this user?')"
+                          class="text-xs text-gray-500 hover:text-indigo-600 transition">
+                    <%= u.is_active ? 'Deactivate' : 'Activate' %>
+                  </button>
+                </form>
+              </div>
             </td>
           </tr>
         <% }) %>

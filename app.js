@@ -52,8 +52,15 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Method override for PUT/DELETE in forms
-app.use(methodOverride('_method'));
+// Method override for PUT/DELETE in forms — reads from body first, then query string
+app.use(methodOverride(function (req) {
+  if (req.body && typeof req.body === 'object' && '_method' in req.body) {
+    const method = req.body['_method'];
+    delete req.body['_method'];
+    return method;
+  }
+  return req.query && req.query['_method'];
+}));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -84,6 +91,22 @@ app.use(flash());
 // Passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Ensure session is persisted before every redirect (critical on Vercel serverless)
+app.use((req, res, next) => {
+  const origRedirect = res.redirect.bind(res);
+  res.redirect = function (...args) {
+    if (req.session) {
+      req.session.save((err) => {
+        if (err) console.error('[session-save-error]', err);
+        origRedirect(...args);
+      });
+    } else {
+      origRedirect(...args);
+    }
+  };
+  next();
+});
 
 // Tenant middleware — attaches schoolId + currentUser to every request
 app.use(attachTenant);

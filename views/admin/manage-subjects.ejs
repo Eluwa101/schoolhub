@@ -30,7 +30,8 @@
             <td class="px-6 py-4 text-sm text-gray-500"><span class="font-mono bg-gray-100 px-2 py-0.5 rounded text-xs"><%= sub.code || '—' %></span></td>
             <td class="px-6 py-4 text-sm text-gray-500"><%= truncate(sub.description, 80) || '—' %></td>
             <td class="px-6 py-4 text-right">
-              <form method="POST" action="/admin/subjects/<%= sub.id %>?_method=DELETE" class="inline">
+              <form method="POST" action="/admin/subjects/<%= sub.id %>" class="inline">
+                <input type="hidden" name="_method" value="DELETE" />
                 <button type="submit" onclick="return confirm('Delete subject?')" class="text-xs text-red-500 hover:text-red-700">Delete</button>
               </form>
             </td>

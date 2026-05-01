@@ -25,7 +25,8 @@
               By <%= ann.author?.first_name %> <%= ann.author?.last_name %> · <%= formatDateTime(ann.created_at) %>
             </p>
           </div>
-          <form method="POST" action="/admin/announcements/<%= ann.id %>?_method=DELETE">
+          <form method="POST" action="/admin/announcements/<%= ann.id %>">
+            <input type="hidden" name="_method" value="DELETE" />
             <button type="submit" onclick="return confirm('Delete this announcement?')"
                     class="text-red-400 hover:text-red-600 p-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

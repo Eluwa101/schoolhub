@@ -32,7 +32,8 @@
               <%= cls.class_teacher ? `${cls.class_teacher.first_name} ${cls.class_teacher.last_name}` : '—' %>
             </td>
             <td class="px-6 py-4 text-right">
-              <form method="POST" action="/admin/classes/<%= cls.id %>?_method=DELETE" class="inline">
+              <form method="POST" action="/admin/classes/<%= cls.id %>" class="inline">
+                <input type="hidden" name="_method" value="DELETE" />
                 <button type="submit" onclick="return confirm('Delete class <%= cls.name %>? This cannot be undone.')"
                         class="text-xs text-red-500 hover:text-red-700">Delete</button>
               </form>

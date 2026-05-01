@@ -31,7 +31,8 @@
                 <p class="text-blue-600"><%= formatTime(entry.start_time) %> – <%= formatTime(entry.end_time) %></p>
                 <p class="text-blue-500 truncate"><%= entry.teacher ? `${entry.teacher.first_name} ${entry.teacher.last_name}` : '' %></p>
                 <% if (entry.room) { %><p class="text-gray-400">Rm: <%= entry.room %></p><% } %>
-                <form method="POST" action="/admin/timetable/<%= entry.id %>?_method=DELETE&classId=<%= selectedClassId %>" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100">
+                <form method="POST" action="/admin/timetable/<%= entry.id %>?classId=<%= selectedClassId %>" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100">
+                  <input type="hidden" name="_method" value="DELETE" />
                   <button type="submit" onclick="return confirm('Remove this entry?')" class="text-red-400 hover:text-red-600">✕</button>
                 </form>
               </div>

@@ -143,6 +143,102 @@ async function toggleUserActiveHandler(req, res, next) {
   }
 }
 
+async function getUserProfile(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { data: profile, error } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', id)
+      .eq('school_id', req.schoolId)
+      .single();
+
+    if (error || !profile) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/admin/users');
+    }
+
+    let linkedStudents = [];
+    let availableStudents = [];
+
+    if (profile.role === 'parent') {
+      const { data: links } = await supabaseAdmin
+        .from('parent_students')
+        .select('student:student_id(id, first_name, last_name)')
+        .eq('parent_id', id);
+      linkedStudents = links?.map(l => l.student).filter(Boolean) || [];
+
+      const { users: allStudents } = await getProfilesBySchool(req.schoolId, { role: 'student' });
+      const linkedIds = new Set(linkedStudents.map(s => s.id));
+      availableStudents = allStudents.filter(s => !linkedIds.has(s.id));
+    }
+
+    res.render('admin/user-profile', {
+      title: `${profile.first_name} ${profile.last_name}`,
+      profile,
+      linkedStudents,
+      availableStudents,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postLinkChild(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { studentId } = req.body;
+
+    if (!studentId) {
+      req.flash('error', 'Please select a student.');
+      return res.redirect(`/admin/users/${id}`);
+    }
+
+    const { data: student } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', studentId)
+      .eq('school_id', req.schoolId)
+      .single();
+
+    if (!student) {
+      req.flash('error', 'Student not found in this school.');
+      return res.redirect(`/admin/users/${id}`);
+    }
+
+    const { error } = await supabaseAdmin
+      .from('parent_students')
+      .upsert({ parent_id: id, student_id: studentId }, { onConflict: 'parent_id,student_id' });
+
+    if (error) throw error;
+
+    req.flash('success', 'Student linked to parent successfully.');
+    res.redirect(`/admin/users/${id}`);
+  } catch (err) {
+    req.flash('error', `Failed to link student: ${err.message}`);
+    res.redirect(`/admin/users/${req.params.id}`);
+  }
+}
+
+async function postUnlinkChild(req, res, next) {
+  try {
+    const { id, studentId } = req.params;
+    const { error } = await supabaseAdmin
+      .from('parent_students')
+      .delete()
+      .eq('parent_id', id)
+      .eq('student_id', studentId);
+
+    if (error) throw error;
+
+    req.flash('success', 'Student unlinked from parent.');
+    res.redirect(`/admin/users/${id}`);
+  } catch (err) {
+    req.flash('error', `Failed to unlink student: ${err.message}`);
+    res.redirect(`/admin/users/${req.params.id}`);
+  }
+}
+
 // Class Management
 async function getClasses(req, res, next) {
   try {
@@ -497,6 +593,9 @@ module.exports = {
   getUsers,
   postInviteUser,
   toggleUserActive: toggleUserActiveHandler,
+  getUserProfile,
+  postLinkChild,
+  postUnlinkChild,
   getClasses,
   postCreateClass,
   putClass,

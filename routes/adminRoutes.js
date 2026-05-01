@@ -15,7 +15,10 @@ router.post('/settings', ...adminOnly, upload.single('logo'), ctrl.postSettings)
 
 router.get('/users', ...adminOnly, ctrl.getUsers);
 router.post('/users/invite', ...adminOnly, ctrl.postInviteUser);
+router.get('/users/:id', ...adminOnly, ctrl.getUserProfile);
 router.post('/users/:id/toggle-active', ...adminOnly, ctrl.toggleUserActive);
+router.post('/users/:id/link-child', ...adminOnly, ctrl.postLinkChild);
+router.delete('/users/:id/unlink-child/:studentId', ...adminOnly, ctrl.postUnlinkChild);
 
 router.get('/classes', ...adminOnly, ctrl.getClasses);
 router.post('/classes', ...adminOnly, ctrl.postCreateClass);

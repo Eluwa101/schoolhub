@@ -9,11 +9,14 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
   console.warn('[warn] Missing Supabase environment variables — DB operations will fail until configured.');
 }
 
+const PLACEHOLDER_URL = 'https://placeholder.supabase.co';
+const PLACEHOLDER_KEY = 'placeholder';
+
 // Anon client — for client-side-safe operations
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl || PLACEHOLDER_URL, supabaseAnonKey || PLACEHOLDER_KEY);
 
 // Service role client — bypasses RLS; server-side only
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+const supabaseAdmin = createClient(supabaseUrl || PLACEHOLDER_URL, supabaseServiceKey || PLACEHOLDER_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

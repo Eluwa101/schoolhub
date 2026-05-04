@@ -118,7 +118,11 @@ app.use((req, res, next) => {
   res.locals.error = req.flash('error');
   res.locals.info = req.flash('info');
   res.locals.currentPath = req.path;
-  const dateLocale = res.locals.schoolPreferences?.dateLocale || 'en-GB';
+  // Guarantee these are always defined so layout.ejs never throws ReferenceError,
+  // even for unauthenticated requests where attachTenant is a no-op.
+  if (!res.locals.schoolTheme) res.locals.schoolTheme = helpers.DEFAULT_SCHOOL_THEME;
+  if (!res.locals.schoolPreferences) res.locals.schoolPreferences = helpers.DEFAULT_SCHOOL_PREFERENCES;
+  const dateLocale = res.locals.schoolPreferences.dateLocale || 'en-GB';
   res.locals.formatDate = (date) => helpers.formatDate(date, dateLocale);
   res.locals.formatDateTime = (date) => helpers.formatDateTime(date, dateLocale);
   res.locals.formatTime = helpers.formatTime;

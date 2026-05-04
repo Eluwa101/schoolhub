@@ -95,21 +95,23 @@ function normalizeHex(color, fallback) {
   return fallback;
 }
 
-function normalizeSchoolTheme(theme = {}) {
+function normalizeSchoolTheme(theme) {
+  const t = theme && typeof theme === 'object' ? theme : {};
   return {
-    primary: normalizeHex(theme.primary, DEFAULT_SCHOOL_THEME.primary),
-    secondary: normalizeHex(theme.secondary, DEFAULT_SCHOOL_THEME.secondary),
-    accent: normalizeHex(theme.accent, DEFAULT_SCHOOL_THEME.accent),
-    surface: normalizeHex(theme.surface, DEFAULT_SCHOOL_THEME.surface),
+    primary: normalizeHex(t.primary, DEFAULT_SCHOOL_THEME.primary),
+    secondary: normalizeHex(t.secondary, DEFAULT_SCHOOL_THEME.secondary),
+    accent: normalizeHex(t.accent, DEFAULT_SCHOOL_THEME.accent),
+    surface: normalizeHex(t.surface, DEFAULT_SCHOOL_THEME.surface),
   };
 }
 
-function normalizeSchoolPreferences(preferences = {}) {
-  const dateLocale = ['en-GB', 'en-US'].includes(preferences.dateLocale)
-    ? preferences.dateLocale
+function normalizeSchoolPreferences(preferences) {
+  const p = preferences && typeof preferences === 'object' ? preferences : {};
+  const dateLocale = ['en-GB', 'en-US'].includes(p.dateLocale)
+    ? p.dateLocale
     : DEFAULT_SCHOOL_PREFERENCES.dateLocale;
-  const uiDensity = ['comfortable', 'compact'].includes(preferences.uiDensity)
-    ? preferences.uiDensity
+  const uiDensity = ['comfortable', 'compact'].includes(p.uiDensity)
+    ? p.uiDensity
     : DEFAULT_SCHOOL_PREFERENCES.uiDensity;
 
   return {

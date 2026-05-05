@@ -19,4 +19,7 @@ router.post('/assignments/:id/submit', ...studentOnly, upload.single('file'), ct
 
 router.get('/announcements', ...studentOnly, ctrl.getStudentAnnouncements);
 
+router.get('/messages', ...studentOnly, ctrl.getMessages);
+router.post('/messages', ...studentOnly, ctrl.postMessage);
+
 module.exports = router;

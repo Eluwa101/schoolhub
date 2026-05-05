@@ -1,95 +1,188 @@
 <%- include('../partials/header') %>
 
-<div class="flex flex-wrap items-center gap-4 mb-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-  <div class="w-14 h-14 flex-shrink-0 rounded-full bg-orange-100 flex items-center justify-center">
-    <span class="text-orange-700 font-bold text-xl"><%= child.first_name[0] %></span>
-  </div>
-  <div class="min-w-0 flex-1">
-    <h2 class="text-lg font-bold text-gray-900 truncate"><%= child.first_name %> <%= child.last_name %></h2>
-    <p class="text-sm text-gray-500 truncate"><%= classEnrollments.map(e => e.class?.name).join(', ') || 'No classes' %></p>
-  </div>
-  <!-- Attendance summary badges -->
-  <div class="flex gap-3 text-center">
-    <div class="bg-green-50 rounded-xl px-4 py-2">
-      <p class="font-bold text-green-600"><%= attendanceSummary.total > 0 ? Math.round((attendanceSummary.present/attendanceSummary.total)*100) : 0 %>%</p>
-      <p class="text-xs text-gray-500">Attendance</p>
+<!-- Child Profile Card -->
+<div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6 mb-6">
+  <div class="flex flex-wrap items-center gap-4">
+    <% if (child.avatar_url) { %>
+      <img src="<%= child.avatar_url %>" class="w-14 h-14 rounded-full object-cover flex-shrink-0" />
+    <% } else { %>
+      <div class="w-14 h-14 flex-shrink-0 rounded-full flex items-center justify-center" style="background: var(--tenant-primary-soft);">
+        <span class="font-bold text-xl" style="color: var(--tenant-primary);"><%= child.first_name[0] %></span>
+      </div>
+    <% } %>
+    <div class="min-w-0 flex-1">
+      <h2 class="text-lg font-bold text-gray-900"><%= child.first_name %> <%= child.last_name %></h2>
+      <p class="text-sm text-gray-500"><%= classEnrollments.map(e => e.class?.name).filter(Boolean).join(', ') || 'No classes enrolled' %></p>
     </div>
-    <div class="bg-blue-50 rounded-xl px-4 py-2">
-      <p class="font-bold text-blue-600"><%= attendanceSummary.present %>/<%= attendanceSummary.total %></p>
-      <p class="text-xs text-gray-500">Days Present</p>
+    <div class="flex flex-wrap gap-3 text-center">
+      <div class="bg-green-50 rounded-2xl px-4 py-2.5">
+        <p class="text-lg font-bold text-green-600"><%= attendanceSummary.total > 0 ? Math.round((attendanceSummary.present/attendanceSummary.total)*100) : 0 %>%</p>
+        <p class="text-xs text-gray-500">Attendance</p>
+      </div>
+      <div class="bg-blue-50 rounded-2xl px-4 py-2.5">
+        <p class="text-lg font-bold text-blue-600"><%= attendanceSummary.present %>/<%= attendanceSummary.total %></p>
+        <p class="text-xs text-gray-500">Days Present</p>
+      </div>
+      <%
+        const submittedCount = assignments.filter(a => {
+          const sub = Array.isArray(a.submission) ? a.submission[0] : null;
+          return sub?.submitted_at;
+        }).length;
+      %>
+      <div class="rounded-2xl px-4 py-2.5" style="background: var(--tenant-primary-soft);">
+        <p class="text-lg font-bold" style="color: var(--tenant-primary);"><%= submittedCount %>/<%= assignments.length %></p>
+        <p class="text-xs text-gray-500">Assignments</p>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <!-- Grades -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Grades Chart -->
+  <div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6">
     <h3 class="font-semibold text-gray-900 mb-4">Grades by Subject</h3>
     <% if (Object.keys(subjectMap).length) { %>
-      <div class="space-y-4">
+      <canvas id="gradesChart" height="220"></canvas>
+      <div class="mt-4 space-y-2">
         <% Object.values(subjectMap).forEach(sub => { %>
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-sm font-medium text-gray-700"><%= sub.name %></span>
-              <span class="text-sm font-bold <%= sub.average >= 60 ? 'text-green-600' : 'text-red-500' %>"><%= sub.average %>% (<%= letterGrade(sub.average) %>)</span>
-            </div>
-            <div class="w-full bg-gray-100 rounded-full h-2">
-              <div class="h-2 rounded-full <%= sub.average >= 60 ? 'bg-green-500' : 'bg-red-400' %>" style="width: <%= sub.average %>%"></div>
-            </div>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-700 font-medium"><%= sub.name %></span>
+            <span class="font-bold <%= sub.average >= 60 ? 'text-green-600' : 'text-red-500' %>">
+              <%= sub.average %>% · <%= letterGrade(sub.average) %>
+            </span>
           </div>
         <% }) %>
       </div>
     <% } else { %>
-      <p class="text-sm text-gray-400 text-center py-4">No grades recorded yet</p>
+      <p class="text-sm text-gray-400 text-center py-10">No grades recorded yet</p>
     <% } %>
   </div>
 
-  <!-- Recent Attendance -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+  <!-- Attendance Breakdown -->
+  <div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6">
     <h3 class="font-semibold text-gray-900 mb-4">Recent Attendance</h3>
     <% if (attendance && attendance.length) { %>
-      <div class="space-y-2 max-h-64 overflow-y-auto">
+      <div class="space-y-1.5 max-h-72 overflow-y-auto pr-1">
         <% attendance.forEach(rec => { %>
-          <div class="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
-            <span class="text-gray-600"><%= formatDate(rec.date) %></span>
-            <span class="text-xs font-medium px-2 py-0.5 rounded-full capitalize
+          <div class="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+            <div>
+              <span class="text-gray-700"><%= formatDate(rec.date) %></span>
+              <% if (rec.classes?.name) { %><span class="text-xs text-gray-400 ml-1.5">· <%= rec.classes.name %></span><% } %>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize
               <%= rec.status === 'present' ? 'bg-green-100 text-green-700' :
                   rec.status === 'absent' ? 'bg-red-100 text-red-700' :
-                  rec.status === 'late' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-600' %>">
+                  rec.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                  'bg-gray-100 text-gray-500' %>">
               <%= rec.status %>
             </span>
           </div>
         <% }) %>
       </div>
     <% } else { %>
-      <p class="text-sm text-gray-400 text-center py-4">No attendance records</p>
+      <p class="text-sm text-gray-400 text-center py-10">No attendance records</p>
     <% } %>
   </div>
 </div>
 
-<!-- Assignments -->
-<div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-  <h3 class="font-semibold text-gray-900 mb-4">Assignments</h3>
-  <% if (assignments && assignments.length) { %>
-    <div class="space-y-3">
-      <% assignments.slice(0, 10).forEach(a => { %>
-        <% const submission = Array.isArray(a.submission) ? a.submission[0] : null; %>
-        <div class="flex items-center justify-between text-sm p-3 rounded-lg border border-gray-100">
-          <div>
-            <p class="font-medium text-gray-800"><%= a.title %></p>
-            <p class="text-xs text-gray-400"><%= a.subjects?.name %> · Due <%= formatDate(a.due_date) %></p>
+<!-- Assignments & Teacher Comments -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Assignments -->
+  <div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6">
+    <h3 class="font-semibold text-gray-900 mb-4">Assignments</h3>
+    <% if (assignments && assignments.length) { %>
+      <div class="space-y-2.5">
+        <% assignments.slice(0, 10).forEach(a => { %>
+          <% const submission = Array.isArray(a.submission) ? a.submission[0] : null; %>
+          <div class="flex items-center justify-between text-sm p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
+            <div class="min-w-0 mr-3">
+              <p class="font-medium text-gray-800 truncate"><%= a.title %></p>
+              <p class="text-xs text-gray-400"><%= a.subjects?.name %> · Due <%= formatDate(a.due_date) %></p>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full font-semibold flex-shrink-0
+              <%= submission?.submitted_at ? 'bg-green-100 text-green-700' :
+                  new Date(a.due_date) < new Date() ? 'bg-red-100 text-red-600' :
+                  'bg-gray-100 text-gray-500' %>">
+              <%= submission?.submitted_at ? (submission.score !== null ? `${submission.score}/${a.max_score} pts` : 'Submitted') : (new Date(a.due_date) < new Date() ? 'Missed' : 'Pending') %>
+            </span>
           </div>
-          <span class="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0
-            <%= submission?.submitted_at ? 'bg-green-100 text-green-700' :
-                new Date(a.due_date) < new Date() ? 'bg-red-100 text-red-600' :
-                'bg-gray-100 text-gray-500' %>">
-            <%= submission?.submitted_at ? (submission.score !== null ? `${submission.score} pts` : 'Submitted') : (new Date(a.due_date) < new Date() ? 'Missed' : 'Pending') %>
-          </span>
-        </div>
-      <% }) %>
-    </div>
-  <% } else { %>
-    <p class="text-sm text-gray-400 text-center py-4">No assignments</p>
-  <% } %>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="text-sm text-gray-400 text-center py-10">No assignments</p>
+    <% } %>
+  </div>
+
+  <!-- Teacher Comments -->
+  <div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6">
+    <h3 class="font-semibold text-gray-900 mb-4">Teacher Feedback</h3>
+    <%
+      const notesEntries = [];
+      Object.values(subjectMap).forEach(sub => {
+        sub.grades.forEach(g => {
+          if (g.notes) notesEntries.push({ subject: sub.name, notes: g.notes, teacher: g.teacher, date: g.graded_at });
+        });
+      });
+    %>
+    <% if (notesEntries.length) { %>
+      <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
+        <% notesEntries.slice(0, 10).forEach(entry => { %>
+          <div class="p-3 rounded-xl bg-gray-50 border border-gray-100">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-gray-700"><%= entry.subject %></span>
+              <span class="text-xs text-gray-400"><%= formatDate(entry.date) %></span>
+            </div>
+            <p class="text-sm text-gray-600 leading-relaxed"><%= entry.notes %></p>
+            <% if (entry.teacher) { %>
+              <p class="text-xs text-gray-400 mt-1">— <%= entry.teacher.first_name %> <%= entry.teacher.last_name %></p>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="flex flex-col items-center justify-center py-10 text-center">
+        <svg class="w-10 h-10 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+        <p class="text-sm text-gray-400">No teacher comments yet</p>
+      </div>
+    <% } %>
+  </div>
 </div>
+
+<% if (Object.keys(subjectMap).length) { %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const primary = getComputedStyle(document.documentElement).getPropertyValue('--tenant-primary').trim() || '#f97316';
+  const subjectNames = <%- JSON.stringify(Object.values(subjectMap).map(s => s.name)) %>;
+  const subjectAvgs = <%- JSON.stringify(Object.values(subjectMap).map(s => s.average)) %>;
+
+  const ctx = document.getElementById('gradesChart');
+  if (ctx && subjectNames.length) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: subjectNames,
+        datasets: [{
+          label: 'Average %',
+          data: subjectAvgs,
+          backgroundColor: primary + 'bb',
+          borderColor: primary,
+          borderWidth: 1,
+          borderRadius: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+})();
+</script>
+<% } %>

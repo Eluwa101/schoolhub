@@ -10,7 +10,7 @@ const { getAuditLogs } = require('../models/auditModel');
 const { getSchoolAttendanceStats } = require('../models/attendanceModel');
 const { getInbox, getSent, getMessageById, getThread, sendMessage, markConversationAsRead } = require('../models/messageModel');
 const { createInviteToken } = require('../utils/inviteToken');
-const { sendInviteEmail, sendNewMessageEmail } = require('../utils/mailer');
+const { sendInviteEmail, sendNewMessageEmail, sendAnnouncementEmail } = require('../utils/mailer');
 const { parseCsvBuffer, toCsv } = require('../utils/csv');
 const { selectConversation, resolveReplyRecipient, buildConversationThread } = require('../utils/messageCenter');
 const { slugify, normalizeSchoolTheme, normalizeSchoolPreferences } = require('../utils/helpers');
@@ -75,6 +75,7 @@ async function postSettings(req, res, next) {
       surfaceTint,
       dateLocale,
       uiDensity,
+      senderEmail,
     } = req.body;
     let logoUrl = undefined;
 
@@ -104,7 +105,7 @@ async function postSettings(req, res, next) {
         accent: accentColor,
         surface: surfaceTint,
       }),
-      preferences: normalizeSchoolPreferences({ dateLocale, uiDensity }),
+      preferences: normalizeSchoolPreferences({ dateLocale, uiDensity, senderEmail }),
     };
     if (logoUrl) updates.logo_url = logoUrl;
 
@@ -640,6 +641,20 @@ async function deleteSubjectHandler(req, res, next) {
 }
 
 // Timetable
+async function checkTimetableConflict(schoolId, classId, dayOfWeek, startTime, endTime, excludeId = null) {
+  let q = supabaseAdmin
+    .from('timetable')
+    .select('id, start_time, end_time, subjects:subject_id(name)')
+    .eq('school_id', schoolId)
+    .eq('class_id', classId)
+    .eq('day_of_week', parseInt(dayOfWeek))
+    .lt('start_time', endTime)
+    .gt('end_time', startTime);
+  if (excludeId) q = q.neq('id', excludeId);
+  const { data } = await q;
+  return data || [];
+}
+
 async function getTimetable(req, res, next) {
   try {
     const [classes, subjects, teachers] = await Promise.all([
@@ -681,6 +696,12 @@ async function postTimetable(req, res, next) {
       req.flash('error', 'Class, subject, day, start time, and end time are required.');
       return res.redirect(`/admin/timetable${classId ? `?classId=${classId}` : ''}`);
     }
+    const conflicts = await checkTimetableConflict(req.schoolId, classId, dayOfWeek, startTime, endTime);
+    if (conflicts.length) {
+      const c = conflicts[0];
+      req.flash('error', `Time conflict: ${c.subjects?.name || 'another subject'} is already scheduled ${c.start_time}–${c.end_time} on this day.`);
+      return res.redirect(`/admin/timetable${classId ? `?classId=${classId}` : ''}`);
+    }
     const { error } = await supabaseAdmin.from('timetable').insert({
       school_id: req.schoolId,
       class_id: classId,
@@ -707,6 +728,14 @@ async function putTimetableEntry(req, res, next) {
     if (!subjectId || !dayOfWeek || !startTime || !endTime) {
       req.flash('error', 'Subject, day, start time, and end time are required.');
       return res.redirect(`/admin/timetable${classId ? `?classId=${classId}` : ''}`);
+    }
+    if (classId) {
+      const conflicts = await checkTimetableConflict(req.schoolId, classId, dayOfWeek, startTime, endTime, id);
+      if (conflicts.length) {
+        const c = conflicts[0];
+        req.flash('error', `Time conflict: ${c.subjects?.name || 'another subject'} is already scheduled ${c.start_time}–${c.end_time} on this day.`);
+        return res.redirect(`/admin/timetable?classId=${classId}`);
+      }
     }
     const { error } = await supabaseAdmin.from('timetable').update({
       subject_id: subjectId,
@@ -773,7 +802,7 @@ async function getAnnouncements(req, res, next) {
 
 async function postAnnouncement(req, res, next) {
   try {
-    const { title, body, targetRole, targetClassId, isPinned } = req.body;
+    const { title, body, targetRole, targetClassId, isPinned, sendEmail } = req.body;
     if (!title || !body) {
       req.flash('error', 'Title and body are required.');
       return res.redirect('/admin/announcements');
@@ -787,7 +816,53 @@ async function postAnnouncement(req, res, next) {
       targetClassId: targetClassId || null,
       isPinned: isPinned === 'on',
     });
-    req.flash('success', 'Announcement posted.');
+
+    // Broadcast email notification (best-effort, non-blocking)
+    if (sendEmail === 'on') {
+      const school = await getSchoolById(req.schoolId);
+      const senderEmail = school?.preferences?.senderEmail || process.env.EMAIL_FROM;
+      const appUrl = process.env.APP_URL || '';
+
+      let roleFilter = null;
+      if (targetRole && targetRole !== 'all') roleFilter = targetRole;
+
+      let userQuery = supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('school_id', req.schoolId)
+        .eq('is_active', true);
+      if (roleFilter) userQuery = userQuery.eq('role', roleFilter);
+      if (targetClassId) {
+        const { data: classStudents } = await supabaseAdmin
+          .from('student_classes')
+          .select('student_id')
+          .eq('class_id', targetClassId);
+        const studentIds = (classStudents || []).map(s => s.student_id);
+        if (studentIds.length) userQuery = userQuery.in('id', studentIds);
+        else userQuery = userQuery.eq('id', 'none');
+      }
+
+      const { data: recipients } = await userQuery.limit(500);
+      if (recipients?.length) {
+        Promise.all(recipients.map(async p => {
+          try {
+            const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);
+            if (authUser?.user?.email) {
+              await sendAnnouncementEmail({
+                to: authUser.user.email,
+                schoolName: school?.name || 'Your School',
+                announcementTitle: title,
+                announcementBody: body,
+                appUrl,
+                senderEmail,
+              });
+            }
+          } catch {}
+        })).catch(() => {});
+      }
+    }
+
+    req.flash('success', sendEmail === 'on' ? 'Announcement posted and emails queued.' : 'Announcement posted.');
     res.redirect('/admin/announcements');
   } catch (err) {
     req.flash('error', `Failed to post announcement: ${err.message}`);
@@ -895,11 +970,58 @@ async function getReports(req, res, next) {
       getSchoolAttendanceStats(req.schoolId),
       getAuditLogs(req.schoolId, { limit: 50 }),
     ]);
+
+    // Grade averages per subject
+    const { data: gradeData } = await supabaseAdmin
+      .from('grades')
+      .select('score, max_score, subjects:subject_id(name), classes:class_id(name)')
+      .eq('school_id', req.schoolId);
+
+    const subjectGradeMap = {};
+    (gradeData || []).forEach(g => {
+      const sName = g.subjects?.name || 'Unknown';
+      if (!subjectGradeMap[sName]) subjectGradeMap[sName] = [];
+      subjectGradeMap[sName].push((g.score / g.max_score) * 100);
+    });
+    const subjectPerformance = Object.entries(subjectGradeMap).map(([name, scores]) => ({
+      name,
+      avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+    })).sort((a, b) => b.avg - a.avg);
+
+    // Attendance breakdown
+    const { data: attData } = await supabaseAdmin
+      .from('attendance')
+      .select('status')
+      .eq('school_id', req.schoolId);
+    const attBreakdown = { present: 0, absent: 0, late: 0, excused: 0 };
+    (attData || []).forEach(r => { attBreakdown[r.status] = (attBreakdown[r.status] || 0) + 1; });
+
+    // Assignment completion per class
+    const { data: assignData } = await supabaseAdmin
+      .from('assignments')
+      .select('id, classes:class_id(name), assignment_submissions(count)')
+      .eq('school_id', req.schoolId)
+      .limit(100);
+    const classSubmissionMap = {};
+    (assignData || []).forEach(a => {
+      const cls = a.classes?.name || 'Unknown';
+      if (!classSubmissionMap[cls]) classSubmissionMap[cls] = { submissions: 0, assignments: 0 };
+      classSubmissionMap[cls].assignments++;
+      classSubmissionMap[cls].submissions += parseInt(a.assignment_submissions?.[0]?.count || 0);
+    });
+    const classCompletion = Object.entries(classSubmissionMap).map(([name, d]) => ({
+      name,
+      rate: d.assignments > 0 ? Math.round((d.submissions / (d.assignments * (stats.students || 1))) * 100) : 0,
+    }));
+
     res.render('admin/reports', {
       title: 'Reports',
       stats,
       attendanceStats,
       logs,
+      subjectPerformance,
+      attBreakdown,
+      classCompletion,
     });
   } catch (err) {
     next(err);
@@ -908,40 +1030,174 @@ async function getReports(req, res, next) {
 
 async function exportReports(req, res, next) {
   try {
-    const { type } = req.query;
-    let csvData = '';
-    let filename = 'export.csv';
+    const { type, dateFrom, dateTo, classId, format = 'csv' } = req.query;
+    const school = await getSchoolById(req.schoolId);
+    const schoolName = school?.name || 'SchoolHub';
+
+    let headers = [];
+    let rows = [];
+    let filename = 'export';
+    let title = 'Report';
 
     if (type === 'attendance') {
-      const { data } = await supabaseAdmin
+      let q = supabaseAdmin
         .from('attendance')
         .select('date, status, student:student_id(first_name, last_name), class:class_id(name), subject:subject_id(name)')
         .eq('school_id', req.schoolId)
         .order('date', { ascending: false })
-        .limit(5000);
-
-      filename = 'attendance-export.csv';
-      csvData = 'Date,Student,Class,Subject,Status\n';
-      data.forEach(r => {
-        csvData += `${r.date},${r.student?.first_name} ${r.student?.last_name},${r.class?.name},${r.subject?.name},${r.status}\n`;
-      });
+        .limit(10000);
+      if (dateFrom) q = q.gte('date', dateFrom);
+      if (dateTo)   q = q.lte('date', dateTo);
+      if (classId)  q = q.eq('class_id', classId);
+      const { data } = await q;
+      filename = `attendance-${dateFrom || 'all'}`;
+      title = 'Attendance Report';
+      headers = ['Date', 'Student', 'Class', 'Subject', 'Status'];
+      rows = (data || []).map(r => [
+        r.date,
+        `${r.student?.first_name || ''} ${r.student?.last_name || ''}`.trim(),
+        r.class?.name || '',
+        r.subject?.name || '',
+        r.status,
+      ]);
     } else if (type === 'grades') {
-      const { data } = await supabaseAdmin
+      let q = supabaseAdmin
         .from('grades')
         .select('student:student_id(first_name, last_name), subject:subject_id(name), class:class_id(name), assessment_type, score, max_score, term, academic_year, graded_at')
         .eq('school_id', req.schoolId)
         .order('graded_at', { ascending: false })
-        .limit(5000);
-
-      filename = 'grades-export.csv';
-      csvData = 'Student,Subject,Class,Assessment,Score,Max Score,Term,Academic Year,Date\n';
-      data.forEach(r => {
-        csvData += `${r.student?.first_name} ${r.student?.last_name},${r.subject?.name},${r.class?.name},${r.assessment_type},${r.score},${r.max_score},${r.term},${r.academic_year},${r.graded_at?.substring(0, 10)}\n`;
+        .limit(10000);
+      if (dateFrom) q = q.gte('graded_at', dateFrom);
+      if (dateTo)   q = q.lte('graded_at', dateTo + 'T23:59:59');
+      if (classId)  q = q.eq('class_id', classId);
+      const { data } = await q;
+      filename = `grades-${dateFrom || 'all'}`;
+      title = 'Grades Report';
+      headers = ['Student', 'Subject', 'Class', 'Assessment', 'Score', 'Max Score', 'Percentage', 'Term', 'Academic Year', 'Date'];
+      rows = (data || []).map(r => {
+        const pct = r.max_score > 0 ? Math.round((r.score / r.max_score) * 100) : 0;
+        return [
+          `${r.student?.first_name || ''} ${r.student?.last_name || ''}`.trim(),
+          r.subject?.name || '',
+          r.class?.name || '',
+          r.assessment_type,
+          r.score,
+          r.max_score,
+          `${pct}%`,
+          r.term,
+          r.academic_year,
+          r.graded_at?.substring(0, 10) || '',
+        ];
       });
+    } else if (type === 'students') {
+      const { data } = await supabaseAdmin
+        .from('profiles')
+        .select('first_name, last_name, email, phone, created_at, is_active')
+        .eq('school_id', req.schoolId)
+        .eq('role', 'student')
+        .order('last_name');
+      filename = 'students-export';
+      title = 'Student List';
+      headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Enrolled', 'Active'];
+      rows = (data || []).map(r => [
+        r.first_name,
+        r.last_name,
+        r.email || '',
+        r.phone || '',
+        r.created_at?.substring(0, 10) || '',
+        r.is_active ? 'Yes' : 'No',
+      ]);
+    } else if (type === 'assignments') {
+      let q = supabaseAdmin
+        .from('assignments')
+        .select('title, classes:class_id(name), subjects:subject_id(name), due_date, max_score, assignment_submissions(count)')
+        .eq('school_id', req.schoolId)
+        .order('due_date', { ascending: false })
+        .limit(5000);
+      if (dateFrom) q = q.gte('due_date', dateFrom);
+      if (dateTo)   q = q.lte('due_date', dateTo);
+      if (classId)  q = q.eq('class_id', classId);
+      const { data } = await q;
+      filename = 'assignments-export';
+      title = 'Assignments Report';
+      headers = ['Title', 'Class', 'Subject', 'Due Date', 'Max Score', 'Submissions'];
+      rows = (data || []).map(r => [
+        r.title,
+        r.classes?.name || '',
+        r.subjects?.name || '',
+        r.due_date,
+        r.max_score,
+        r.assignment_submissions?.[0]?.count || 0,
+      ]);
+    } else {
+      req.flash('error', 'Invalid export type.');
+      return res.redirect('/admin/reports');
     }
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    if (format === 'xlsx') {
+      const ExcelJS = require('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = schoolName;
+      workbook.created = new Date();
+      const sheet = workbook.addWorksheet(title);
+      sheet.addRow(headers);
+      const hrow = sheet.getRow(1);
+      hrow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      hrow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+      hrow.height = 24;
+      rows.forEach(r => sheet.addRow(r));
+      sheet.columns.forEach((col, i) => { col.width = Math.max((headers[i] || '').length + 6, 14); });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
+      await workbook.xlsx.write(res);
+      return;
+    }
+
+    if (format === 'pdf') {
+      const PDFDocument = require('pdfkit');
+      const doc = new PDFDocument({ margin: 40, size: 'A4', layout: rows.length && headers.length > 6 ? 'landscape' : 'portrait' });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
+      doc.pipe(res);
+      // Header
+      doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e1b4b').text(schoolName, { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(13).font('Helvetica').fillColor('#374151').text(title, { align: 'center' });
+      if (dateFrom || dateTo) {
+        doc.fontSize(9).fillColor('#6b7280').text(`Period: ${dateFrom || 'start'} – ${dateTo || 'present'}`, { align: 'center' });
+      }
+      doc.moveDown(1);
+      // Table
+      const pageW = doc.page.width - 80;
+      const colW = Math.floor(pageW / headers.length);
+      let y = doc.y;
+      const drawRow = (cells, bgColor, textColor, bold, rowH) => {
+        doc.rect(40, y, pageW, rowH).fill(bgColor);
+        cells.forEach((cell, i) => {
+          doc.fillColor(textColor).fontSize(8)
+             .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+             .text(String(cell ?? ''), 44 + i * colW, y + (rowH - 8) / 2, { width: colW - 6, ellipsis: true, lineBreak: false });
+        });
+        y += rowH;
+      };
+      drawRow(headers, '#4f46e5', '#ffffff', true, 22);
+      rows.forEach((row, ri) => {
+        if (y > doc.page.height - 70) { doc.addPage({ layout: doc.options.layout }); y = 40; }
+        drawRow(row, ri % 2 === 0 ? '#f8fafc' : '#ffffff', '#374151', false, 18);
+      });
+      doc.end();
+      return;
+    }
+
+    // Default: CSV
+    function csvEsc(v) {
+      const s = String(v ?? '');
+      return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
+    }
+    let csvData = headers.map(csvEsc).join(',') + '\n';
+    rows.forEach(row => { csvData += row.map(csvEsc).join(',') + '\n'; });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
     res.send(csvData);
   } catch (err) {
     req.flash('error', `Failed to export data: ${err.message}`);

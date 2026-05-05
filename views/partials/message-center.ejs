@@ -129,9 +129,9 @@ const composeTitle = composeTitles[role] || 'New Message';
           </div>
         </div>
 
-        <div class="max-h-[52vh] space-y-4 overflow-y-auto px-6 py-6">
+        <div id="thread-messages" class="max-h-[52vh] space-y-4 overflow-y-auto px-6 py-6">
           <% conversation.forEach((entry) => { const mine = entry.sender_id === currentUser.userId; %>
-            <div class="flex <%= mine ? 'justify-end' : 'justify-start' %>">
+            <div class="flex <%= mine ? 'justify-end' : 'justify-start' %>" data-msg-id="<%= entry.id %>">
               <div class="max-w-2xl rounded-[24px] px-5 py-4 shadow-sm <%= mine ? `bg-${theme.accent}-600 text-white` : 'border border-gray-200 bg-white text-gray-800' %>">
                 <div class="flex items-center justify-between gap-4">
                   <p class="text-xs font-semibold uppercase tracking-[0.18em] <%= mine ? 'text-white/75' : 'text-gray-400' %>">
@@ -177,6 +177,58 @@ const composeTitle = composeTitles[role] || 'New Message';
     </div>
   </section>
 </div>
+
+<% if (selectedMessage) { %>
+<script>
+(function () {
+  const threadEl = document.getElementById('thread-messages');
+  if (!threadEl) return;
+  const conversationId = '<%= selectedMessage.id %>';
+  const myId = '<%= currentUser.userId %>';
+  const accentClass = 'bg-<%= theme.accent %>-600';
+
+  function scrollBottom() { threadEl.scrollTop = threadEl.scrollHeight; }
+  scrollBottom();
+
+  function renderMsg(entry) {
+    const mine = entry.sender_id === myId;
+    const name = mine ? 'You' : `${entry.sender?.first_name || ''} ${entry.sender?.last_name || ''}`.trim();
+    const time = new Date(entry.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const bubble = document.createElement('div');
+    bubble.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
+    bubble.dataset.msgId = entry.id;
+    bubble.innerHTML = `
+      <div class="max-w-2xl rounded-[24px] px-5 py-4 shadow-sm ${mine ? `${accentClass} text-white` : 'border border-gray-200 bg-white text-gray-800'}">
+        <div class="flex items-center justify-between gap-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] ${mine ? 'text-white/75' : 'text-gray-400'}">${name}</p>
+          <span class="text-[11px] ${mine ? 'text-white/70' : 'text-gray-400'}">${time}</span>
+        </div>
+        <p class="mt-2 whitespace-pre-line text-sm leading-6">${entry.body.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+      </div>`;
+    return bubble;
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(`/api/messages/${conversationId}/thread`);
+      if (!res.ok) return;
+      const { messages } = await res.json();
+      const existing = new Set(Array.from(threadEl.querySelectorAll('[data-msg-id]')).map(el => el.dataset.msgId));
+      let added = false;
+      messages.forEach(m => {
+        if (!existing.has(m.id)) { threadEl.appendChild(renderMsg(m)); added = true; }
+      });
+      if (added) scrollBottom();
+    } catch {}
+  }
+
+  const timer = setInterval(poll, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInterval(timer);
+  });
+})();
+</script>
+<% } %>
 
 <div id="compose-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
   <div class="w-full max-w-xl rounded-[30px] border border-white/70 bg-white p-8 shadow-[0_40px_90px_-50px_rgba(15,23,42,0.75)] max-h-[90vh] overflow-y-auto">

@@ -1,20 +1,24 @@
 <div class="mb-6">
-  <% if (typeof breadcrumb !== 'undefined' && breadcrumb) { %>
-    <nav class="flex items-center gap-2 text-sm text-gray-500 mb-2">
+  <% if (typeof breadcrumb !== 'undefined' && breadcrumb && breadcrumb.length > 1) { %>
+    <nav class="flex items-center flex-wrap gap-1.5 text-xs text-gray-500 mb-2" aria-label="Breadcrumb">
       <% breadcrumb.forEach((crumb, i) => { %>
-        <% if (i > 0) { %><span>/</span><% } %>
+        <% if (i > 0) { %>
+          <svg class="w-3.5 h-3.5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        <% } %>
         <% if (crumb.href && i < breadcrumb.length - 1) { %>
-          <a href="<%= crumb.href %>" class="hover:text-gray-900"><%= crumb.label %></a>
+          <a href="<%= crumb.href %>" class="hover:text-gray-900 transition whitespace-nowrap max-w-[120px] sm:max-w-none truncate"><%= crumb.label %></a>
         <% } else { %>
-          <span class="text-gray-900 font-medium"><%= crumb.label %></span>
+          <span class="text-gray-800 font-medium whitespace-nowrap max-w-[160px] sm:max-w-none truncate"><%= crumb.label %></span>
         <% } %>
       <% }) %>
     </nav>
   <% } %>
-  <div class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold text-gray-900"><%= title %></h1>
+  <div class="flex items-start sm:items-center justify-between gap-3">
+    <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight"><%= title %></h1>
     <% if (typeof headerAction !== 'undefined' && headerAction) { %>
-      <%- headerAction %>
+      <div class="flex-shrink-0"><%- headerAction %></div>
     <% } %>
   </div>
 </div>

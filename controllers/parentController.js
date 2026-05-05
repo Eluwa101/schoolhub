@@ -177,4 +177,34 @@ async function postMessage(req, res, next) {
   }
 }
 
-module.exports = { getDashboard, getChildProgress, getMessages, postMessage };
+async function postViewAsStudent(req, res, next) {
+  try {
+    const { studentId } = req.params;
+    const { data: relation } = await supabaseAdmin
+      .from('parent_students')
+      .select('id')
+      .eq('parent_id', req.user.userId)
+      .eq('student_id', studentId)
+      .single();
+    if (!relation) {
+      req.flash('error', 'You do not have access to this student.');
+      return res.redirect('/parent/dashboard');
+    }
+    const { data: child } = await supabaseAdmin
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', studentId)
+      .single();
+    req.session.viewingAsStudent = { id: studentId, firstName: child?.first_name || '', lastName: child?.last_name || '' };
+    req.session.save(() => res.redirect('/student/dashboard'));
+  } catch (err) {
+    next(err);
+  }
+}
+
+function postExitView(req, res) {
+  delete req.session.viewingAsStudent;
+  req.session.save(() => res.redirect('/parent/dashboard'));
+}
+
+module.exports = { getDashboard, getChildProgress, getMessages, postMessage, postViewAsStudent, postExitView };

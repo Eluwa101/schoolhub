@@ -5,10 +5,14 @@ const { getAttendanceSummaryByStudent, getAttendanceByStudent } = require('../mo
 const { getAssignmentsForStudent, getSubmissionByStudent, upsertSubmission } = require('../models/assignmentModel');
 const { getAnnouncements } = require('../models/announcementModel');
 const { generateReportCard } = require('../utils/pdfGenerator');
+const { getInbox, getSent, sendMessage, getThread, getMessageById, markConversationAsRead } = require('../models/messageModel');
+const { getActiveProfilesBySchool } = require('../models/userModel');
+const { sendNewMessageEmail } = require('../utils/mailer');
+const { selectConversation, resolveReplyRecipient, buildConversationThread } = require('../utils/messageCenter');
 
 async function getDashboard(req, res, next) {
   try {
-    const studentId = req.user.userId;
+    const studentId = req.effectiveStudentId || req.user.userId;
     const schoolId = req.schoolId;
 
     const classEnrollments = await getClassesForStudent(studentId, schoolId);
@@ -47,7 +51,7 @@ async function getDashboard(req, res, next) {
 
 async function getTimetable(req, res, next) {
   try {
-    const studentId = req.user.userId;
+    const studentId = req.effectiveStudentId || req.user.userId;
     const classEnrollments = await getClassesForStudent(studentId, req.schoolId);
     const classIds = classEnrollments.map(e => e.class?.id).filter(Boolean);
 
@@ -76,9 +80,10 @@ async function getTimetable(req, res, next) {
 
 async function getGrades(req, res, next) {
   try {
+    const studentId = req.effectiveStudentId || req.user.userId;
     const term = req.query.term || '';
     const academicYear = req.query.academicYear || '';
-    const grades = await getGradesByStudent(req.user.userId, req.schoolId, { term, academicYear });
+    const grades = await getGradesByStudent(studentId, req.schoolId, { term, academicYear });
 
     const subjectMap = {};
     grades.forEach(g => {
@@ -110,21 +115,18 @@ async function getGrades(req, res, next) {
 
 async function getReportCard(req, res, next) {
   try {
+    const studentId = req.effectiveStudentId || req.user.userId;
     const term = req.query.term || 'Term 1';
     const academicYear = req.query.academicYear || new Date().getFullYear().toString();
-    const grades = await getGradesByStudent(req.user.userId, req.schoolId, { term, academicYear });
-    const attendance = await getAttendanceSummaryByStudent(req.user.userId, req.schoolId);
+    const grades = await getGradesByStudent(studentId, req.schoolId, { term, academicYear });
+    const attendance = await getAttendanceSummaryByStudent(studentId, req.schoolId);
     const { data: school } = await supabaseAdmin.from('schools').select('name').eq('id', req.schoolId).single();
-
-    res.render('student/report-card', {
-      title: 'Report Card',
-      grades,
-      attendance,
-      school,
-      term,
-      academicYear,
-      student: req.user,
-    });
+    let student = req.user;
+    if (req.effectiveStudentId) {
+      const { data: sp } = await supabaseAdmin.from('profiles').select('first_name, last_name').eq('id', studentId).single();
+      student = { ...req.user, firstName: sp?.first_name || '', lastName: sp?.last_name || '' };
+    }
+    res.render('student/report-card', { title: 'Report Card', grades, attendance, school, term, academicYear, student });
   } catch (err) {
     next(err);
   }
@@ -132,18 +134,18 @@ async function getReportCard(req, res, next) {
 
 async function downloadReportCardPdf(req, res, next) {
   try {
+    const studentId = req.effectiveStudentId || req.user.userId;
     const term = req.query.term || 'Term 1';
     const academicYear = req.query.academicYear || new Date().getFullYear().toString();
-    const grades = await getGradesByStudent(req.user.userId, req.schoolId, { term, academicYear });
-    const attendance = await getAttendanceSummaryByStudent(req.user.userId, req.schoolId);
+    const grades = await getGradesByStudent(studentId, req.schoolId, { term, academicYear });
+    const attendance = await getAttendanceSummaryByStudent(studentId, req.schoolId);
     const { data: school } = await supabaseAdmin.from('schools').select('name').eq('id', req.schoolId).single();
-
-    const student = {
-      first_name: req.user.firstName,
-      last_name: req.user.lastName || '',
-    };
-
-    generateReportCard({ student, school, grades, attendance, term, academicYear, res });
+    let firstName = req.user.firstName, lastName = req.user.lastName || '';
+    if (req.effectiveStudentId) {
+      const { data: sp } = await supabaseAdmin.from('profiles').select('first_name, last_name').eq('id', studentId).single();
+      firstName = sp?.first_name || ''; lastName = sp?.last_name || '';
+    }
+    generateReportCard({ student: { first_name: firstName, last_name: lastName }, school, grades, attendance, term, academicYear, res });
   } catch (err) {
     next(err);
   }
@@ -151,9 +153,10 @@ async function downloadReportCardPdf(req, res, next) {
 
 async function getAssignments(req, res, next) {
   try {
-    const classEnrollments = await getClassesForStudent(req.user.userId, req.schoolId);
+    const studentId = req.effectiveStudentId || req.user.userId;
+    const classEnrollments = await getClassesForStudent(studentId, req.schoolId);
     const classIds = classEnrollments.map(e => e.class?.id).filter(Boolean);
-    const assignments = await getAssignmentsForStudent(req.user.userId, req.schoolId, classIds);
+    const assignments = await getAssignmentsForStudent(studentId, req.schoolId, classIds);
 
     const now = new Date();
     const upcoming = assignments.filter(a => new Date(a.due_date) >= now);
@@ -211,6 +214,76 @@ async function getStudentAnnouncements(req, res, next) {
   }
 }
 
+async function getMessages(req, res, next) {
+  try {
+    const studentId = req.effectiveStudentId || req.user.userId;
+    const page = parseInt(req.query.page) || 1;
+    const tab = req.query.tab || 'inbox';
+    const messageId = req.query.messageId || '';
+    let messages = [], total = 0;
+
+    if (tab === 'sent') {
+      ({ messages, total } = await getSent(studentId, req.schoolId, { page }));
+    } else {
+      ({ messages, total } = await getInbox(studentId, req.schoolId, { page }));
+    }
+
+    const contacts = await getActiveProfilesBySchool(req.schoolId, {
+      excludeUserId: studentId,
+      roles: ['teacher', 'school_admin'],
+    });
+    const selectedConversation = selectConversation(messages, messageId) || messages[0] || null;
+    let conversation = null, replyRecipient = null, selectedMessage = null;
+    if (selectedConversation) {
+      await markConversationAsRead(selectedConversation.id, studentId, req.schoolId);
+      selectedMessage = await getMessageById(selectedConversation.id, req.schoolId);
+      const thread = await getThread(selectedConversation.id, req.schoolId);
+      conversation = buildConversationThread(selectedMessage, thread);
+      replyRecipient = resolveReplyRecipient({ root: selectedMessage }, studentId);
+    }
+    res.render('student/messages', {
+      title: 'Messages',
+      messages, tab, total, page,
+      totalPages: Math.ceil(total / 20),
+      contacts, selectedConversation, selectedMessage, conversation, replyRecipient,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postMessage(req, res, next) {
+  try {
+    const studentId = req.effectiveStudentId || req.user.userId;
+    if (req.effectiveStudentId) {
+      req.flash('error', 'Messages cannot be sent while viewing as a student.');
+      return res.redirect('/student/messages');
+    }
+    const { recipientId, subject, body, parentMessageId, returnTab } = req.body;
+    const createdMessage = await sendMessage({
+      schoolId: req.schoolId,
+      senderId: studentId,
+      recipientId, subject, body,
+      parentMessageId: parentMessageId || null,
+    });
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(recipientId);
+    if (authUser?.user?.email) {
+      sendNewMessageEmail({
+        to: authUser.user.email,
+        senderName: `${req.user.firstName} ${req.user.lastName || ''}`,
+        messageSubject: subject,
+        appUrl: process.env.APP_URL,
+      }).catch(() => {});
+    }
+    const conversationId = parentMessageId || createdMessage.id;
+    req.flash('success', parentMessageId ? 'Reply sent.' : 'Message sent.');
+    res.redirect(`/student/messages?tab=${returnTab || (parentMessageId ? 'inbox' : 'sent')}&messageId=${conversationId}`);
+  } catch (err) {
+    req.flash('error', `Failed to send message: ${err.message}`);
+    res.redirect('/student/messages');
+  }
+}
+
 module.exports = {
   getDashboard,
   getTimetable,
@@ -220,4 +293,6 @@ module.exports = {
   getAssignments,
   postSubmitAssignment,
   getStudentAnnouncements,
+  getMessages,
+  postMessage,
 };

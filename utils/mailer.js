@@ -99,10 +99,41 @@ async function sendAssignmentNotificationEmail({ to, teacherName, assignmentTitl
   return sendMail({ to, subject, html });
 }
 
+async function sendAnnouncementEmail({ to, schoolName, announcementTitle, announcementBody, appUrl, senderEmail }) {
+  const subject = `[${schoolName}] ${announcementTitle}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #4F46E5;">${announcementTitle}</h2>
+      <p style="color: #374151; line-height: 1.6;">${announcementBody.replace(/\n/g, '<br>')}</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${appUrl || ''}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+          Open SchoolHub
+        </a>
+      </div>
+      <p style="color: #9CA3AF; font-size: 12px;">Sent by ${schoolName}</p>
+    </div>
+  `;
+  return sendMail({ to, subject, html, from: senderEmail });
+}
+
+// sendMailWithRetry — retries up to 3 times with exponential backoff
+async function sendMailWithRetry(params, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await sendMail(params);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, attempt * 1000));
+    }
+  }
+}
+
 module.exports = {
   sendMail,
+  sendMailWithRetry,
   sendInviteEmail,
   sendPasswordResetEmail,
   sendNewMessageEmail,
   sendAssignmentNotificationEmail,
+  sendAnnouncementEmail,
 };

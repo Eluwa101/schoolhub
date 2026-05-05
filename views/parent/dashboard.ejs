@@ -34,10 +34,19 @@
           </div>
         </div>
 
-        <a href="/parent/child/<%= child.id %>/progress"
-           class="block w-full text-center py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg hover:bg-orange-700 transition">
-          View Full Progress
-        </a>
+        <div class="flex gap-2">
+          <a href="/parent/child/<%= child.id %>/progress"
+             class="flex-1 text-center py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg hover:bg-orange-700 transition">
+            View Progress
+          </a>
+          <form method="POST" action="/parent/view-as/<%= child.id %>">
+            <button type="submit"
+                    class="px-4 py-2 border border-orange-300 text-orange-700 text-sm font-semibold rounded-lg hover:bg-orange-50 transition"
+                    title="See your child's portal">
+              Student Portal
+            </button>
+          </form>
+        </div>
       </div>
     <% }) %>
   </div>

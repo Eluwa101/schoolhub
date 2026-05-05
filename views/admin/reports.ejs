@@ -1,66 +1,191 @@
 <%- include('../partials/header') %>
 
 <!-- Summary Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-    <p class="text-sm text-gray-500">Overall Attendance</p>
-    <p class="text-3xl font-bold text-gray-900 mt-1"><%= attendanceStats.percentage %>%</p>
-    <p class="text-xs text-gray-400 mt-1"><%= attendanceStats.present %> present / <%= attendanceStats.total %> total</p>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+  <div class="rounded-[22px] border border-white/70 bg-white/90 p-4 sm:p-5 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur text-center">
+    <p class="text-xs text-gray-500 mb-1">Attendance Rate</p>
+    <p class="text-2xl sm:text-3xl font-bold text-gray-900"><%= attendanceStats.percentage %>%</p>
+    <p class="text-xs text-gray-400 mt-1"><%= attendanceStats.present %>/<%= attendanceStats.total %> present</p>
   </div>
-  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-    <p class="text-sm text-gray-500">Total Students</p>
-    <p class="text-3xl font-bold text-gray-900 mt-1"><%= stats.students %></p>
+  <div class="rounded-[22px] border border-white/70 bg-white/90 p-4 sm:p-5 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur text-center">
+    <p class="text-xs text-gray-500 mb-1">Students</p>
+    <p class="text-2xl sm:text-3xl font-bold text-gray-900"><%= stats.students %></p>
+    <p class="text-xs text-gray-400 mt-1">enrolled</p>
   </div>
-  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-    <p class="text-sm text-gray-500">Total Teachers</p>
-    <p class="text-3xl font-bold text-gray-900 mt-1"><%= stats.teachers %></p>
+  <div class="rounded-[22px] border border-white/70 bg-white/90 p-4 sm:p-5 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur text-center">
+    <p class="text-xs text-gray-500 mb-1">Avg Grade</p>
+    <p class="text-2xl sm:text-3xl font-bold text-gray-900">
+      <% const avgGrade = subjectPerformance.length ? Math.round(subjectPerformance.reduce((a,s)=>a+s.avg,0)/subjectPerformance.length) : 0; %>
+      <%= avgGrade %>%
+    </p>
+    <p class="text-xs text-gray-400 mt-1">school-wide</p>
+  </div>
+  <div class="rounded-[22px] border border-white/70 bg-white/90 p-4 sm:p-5 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur text-center">
+    <p class="text-xs text-gray-500 mb-1">Classes</p>
+    <p class="text-2xl sm:text-3xl font-bold text-gray-900"><%= stats.classes %></p>
+    <p class="text-xs text-gray-400 mt-1">active</p>
   </div>
 </div>
 
-<!-- Export Buttons -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+<!-- Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <!-- Grade by Subject -->
+  <div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6">
+    <h2 class="font-semibold text-gray-900 mb-4">Average Grade by Subject</h2>
+    <% if (subjectPerformance && subjectPerformance.length) { %>
+      <canvas id="subjectChart" height="220"></canvas>
+    <% } else { %>
+      <p class="text-sm text-gray-400 text-center py-10">No grade data yet</p>
+    <% } %>
+  </div>
+
+  <!-- Attendance Breakdown -->
+  <div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6">
+    <h2 class="font-semibold text-gray-900 mb-4">Attendance Breakdown</h2>
+    <% if (attBreakdown && (attBreakdown.present + attBreakdown.absent + attBreakdown.late + attBreakdown.excused) > 0) { %>
+      <div class="flex items-center justify-center">
+        <canvas id="attChart" style="max-height:220px;max-width:220px;"></canvas>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-4">
+        <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0"></span><span class="text-gray-600">Present: <strong><%= attBreakdown.present %></strong></span></div>
+        <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></span><span class="text-gray-600">Absent: <strong><%= attBreakdown.absent %></strong></span></div>
+        <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-amber-400 flex-shrink-0"></span><span class="text-gray-600">Late: <strong><%= attBreakdown.late %></strong></span></div>
+        <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0"></span><span class="text-gray-600">Excused: <strong><%= attBreakdown.excused %></strong></span></div>
+      </div>
+    <% } else { %>
+      <p class="text-sm text-gray-400 text-center py-10">No attendance data yet</p>
+    <% } %>
+  </div>
+</div>
+
+<!-- Export Section -->
+<div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur p-5 sm:p-6 mb-8">
   <h2 class="font-semibold text-gray-900 mb-4">Export Data</h2>
-  <div class="flex flex-wrap gap-3">
-    <a href="/admin/reports/export?type=attendance"
-       class="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 transition">
+  <form method="GET" action="/admin/reports/export" class="flex flex-wrap gap-4 items-end">
+    <div>
+      <label class="block text-xs font-medium text-gray-700 mb-1">Data Type</label>
+      <select name="type" class="px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2">
+        <option value="attendance">Attendance</option>
+        <option value="grades">Grades</option>
+        <option value="students">Students</option>
+        <option value="assignments">Assignments</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-700 mb-1">Format</label>
+      <select name="format" class="px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2">
+        <option value="csv">CSV</option>
+        <option value="xlsx">Excel (.xlsx)</option>
+        <option value="pdf">PDF</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-700 mb-1">From Date</label>
+      <input type="date" name="dateFrom" class="px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2" />
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-700 mb-1">To Date</label>
+      <input type="date" name="dateTo" class="px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2" />
+    </div>
+    <button type="submit"
+            class="flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-full transition hover:opacity-90"
+            style="background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary));">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-      Attendance CSV
-    </a>
-    <a href="/admin/reports/export?type=grades"
-       class="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 transition">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-      Grades CSV
-    </a>
-  </div>
+      Export
+    </button>
+  </form>
 </div>
 
-<!-- Recent Audit Log -->
-<div class="overflow-x-auto rounded-xl shadow-sm border border-gray-100 bg-white">
-  <div class="px-6 py-4 border-b border-gray-100">
+<!-- Audit Log -->
+<div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.3)] backdrop-blur overflow-hidden">
+  <div class="px-5 sm:px-6 py-4 border-b border-gray-100">
     <h2 class="font-semibold text-gray-900">Audit Log</h2>
   </div>
-  <table class="min-w-full divide-y divide-gray-50">
-    <thead class="bg-gray-50">
-      <tr>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Action</th>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Entity</th>
-        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Time</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-50">
-      <% if (logs && logs.length) { %>
-        <% logs.forEach(log => { %>
-          <tr class="hover:bg-gray-50">
-            <td class="px-6 py-3 text-sm text-gray-800"><%= log.user ? `${log.user.first_name} ${log.user.last_name}` : 'System' %></td>
-            <td class="px-6 py-3 text-sm text-gray-600 capitalize"><%= log.action.replace(/_/g, ' ') %></td>
-            <td class="px-6 py-3 text-xs text-gray-400"><%= log.entity_type || '—' %></td>
-            <td class="px-6 py-3 text-xs text-gray-400"><%= formatDateTime(log.created_at) %></td>
-          </tr>
-        <% }) %>
-      <% } else { %>
-        <tr><td colspan="4" class="text-center py-8 text-gray-400">No audit logs yet</td></tr>
-      <% } %>
-    </tbody>
-  </table>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-50">
+      <thead class="bg-gray-50/80">
+        <tr>
+          <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
+          <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Action</th>
+          <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">Entity</th>
+          <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Time</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        <% if (logs && logs.length) { %>
+          <% logs.forEach(log => { %>
+            <tr class="hover:bg-gray-50/80">
+              <td class="px-4 sm:px-6 py-3 text-sm text-gray-800"><%= log.user ? `${log.user.first_name} ${log.user.last_name}` : 'System' %></td>
+              <td class="px-4 sm:px-6 py-3 text-sm text-gray-600 capitalize"><%= log.action.replace(/_/g, ' ') %></td>
+              <td class="px-4 sm:px-6 py-3 text-xs text-gray-400 hidden md:table-cell"><%= log.entity_type || '—' %></td>
+              <td class="px-4 sm:px-6 py-3 text-xs text-gray-400"><%= formatDateTime(log.created_at) %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="4" class="text-center py-8 text-gray-400">No audit logs yet</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
 </div>
+
+<% if (subjectPerformance && subjectPerformance.length || (attBreakdown && attBreakdown.present > 0)) { %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const primary = getComputedStyle(document.documentElement).getPropertyValue('--tenant-primary').trim() || '#4f46e5';
+  const secondary = getComputedStyle(document.documentElement).getPropertyValue('--tenant-secondary').trim() || '#0ea5e9';
+
+  <% if (subjectPerformance && subjectPerformance.length) { %>
+  const subjectCtx = document.getElementById('subjectChart');
+  if (subjectCtx) {
+    new Chart(subjectCtx, {
+      type: 'bar',
+      data: {
+        labels: <%- JSON.stringify(subjectPerformance.map(s => s.name)) %>,
+        datasets: [{
+          label: 'Avg Grade %',
+          data: <%- JSON.stringify(subjectPerformance.map(s => s.avg)) %>,
+          backgroundColor: primary + 'cc',
+          borderColor: primary,
+          borderWidth: 1,
+          borderRadius: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  <% } %>
+
+  <% if (attBreakdown && (attBreakdown.present + attBreakdown.absent + attBreakdown.late + attBreakdown.excused) > 0) { %>
+  const attCtx = document.getElementById('attChart');
+  if (attCtx) {
+    new Chart(attCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Present', 'Absent', 'Late', 'Excused'],
+        datasets: [{
+          data: [<%= attBreakdown.present %>, <%= attBreakdown.absent %>, <%= attBreakdown.late %>, <%= attBreakdown.excused %>],
+          backgroundColor: ['#34d399', '#f87171', '#fbbf24', '#60a5fa'],
+          borderWidth: 0,
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '65%',
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+  <% } %>
+})();
+</script>
+<% } %>

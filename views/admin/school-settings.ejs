@@ -149,6 +149,18 @@
           </div>
         </div>
 
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Email & Notifications</p>
+          <div class="mt-4">
+            <label class="mb-1 block text-sm font-medium text-gray-700">Custom Email Sender Address</label>
+            <p class="text-xs text-gray-500 mb-2">Used as the "From" address for announcement emails sent to parents, teachers, and students.</p>
+            <input type="email" name="senderEmail"
+                   value="<%= schoolPreferences.senderEmail || '' %>"
+                   placeholder="e.g. noreply@yourschool.edu"
+                   class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
         <div class="flex justify-end">
           <button type="submit" class="rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:bg-indigo-700">
             Save Changes

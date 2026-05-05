@@ -200,14 +200,50 @@ tbody tr:hover {
   }
 }
 
-/* Sidebar transition on mobile */
+/* Sidebar transition */
 #sidebar {
-  will-change: transform;
+  will-change: transform, width;
+  width: 16rem; /* 256px = w-64 */
 }
 
-/* Prevent layout shift when sidebar opens */
+/* Prevent layout shift when sidebar opens on mobile */
 @media (max-width: 1023px) {
   #sidebar {
     position: fixed;
+    width: 16rem;
   }
+}
+
+/* Desktop sidebar collapsed state */
+@media (min-width: 1024px) {
+  #sidebar.sidebar-collapsed {
+    width: 4.5rem; /* ~72px icon-only */
+  }
+  #sidebar.sidebar-collapsed .sidebar-label,
+  #sidebar.sidebar-collapsed .sidebar-label-section {
+    display: none;
+  }
+  #sidebar.sidebar-collapsed nav a {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #sidebar.sidebar-collapsed .sidebar-tooltip {
+    display: block;
+  }
+  #sidebar:not(.sidebar-collapsed) .sidebar-tooltip {
+    display: none !important;
+  }
+}
+
+/* Tooltip positioning */
+.sidebar-tooltip {
+  display: none;
+  left: calc(100% + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  position: absolute;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity 0.15s;
 }

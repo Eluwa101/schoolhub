@@ -67,38 +67,45 @@ function iconSvg(name) {
 }
 %>
 
-<aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full transform flex-col border-r border-white/70 bg-white/82 shadow-[18px_0_60px_-42px_rgba(15,23,42,0.4)] backdrop-blur-xl transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:pt-0 pt-16">
-  <div class="flex-1 overflow-y-auto px-3 py-4">
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/70 bg-white/82 shadow-[18px_0_60px_-42px_rgba(15,23,42,0.4)] backdrop-blur-xl transition-all duration-300 ease-in-out
+  -translate-x-full lg:translate-x-0 lg:static
+  w-64 lg:sidebar-expanded:w-64 lg:sidebar-collapsed:w-16 pt-0 lg:pt-0">
+  <div class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
     <nav class="space-y-1">
       <% links.forEach(link => { %>
         <%
           const isActive = currentPath && currentPath.startsWith(link.href.split('?')[0]);
-          const badgeVal = link.badge && typeof eval !== 'undefined' ? (locals[link.badge] || 0) : 0;
+          const badgeVal = link.badge ? (locals[link.badge] || 0) : 0;
         %>
         <a href="<%= link.href %>"
-           class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all <%= isActive ? `bg-${color}-50 text-${color}-700 shadow-sm ring-1 ring-${color}-100` : 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm' %>">
+           title="<%= link.label %>"
+           class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all group relative <%= isActive ? `bg-${color}-50 text-${color}-700 shadow-sm ring-1 ring-${color}-100` : 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm' %>">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <%- iconSvg(link.icon) %>
           </svg>
-          <span class="flex-1"><%= link.label %></span>
+          <span class="flex-1 sidebar-label whitespace-nowrap overflow-hidden"><%= link.label %></span>
           <% if (link.badge && locals[link.badge] > 0) { %>
-            <span class="ml-auto rounded-full bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 min-w-[20px] text-center">
+            <span class="sidebar-label ml-auto rounded-full bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 min-w-[20px] text-center">
               <%= locals[link.badge] %>
             </span>
           <% } %>
+          <!-- Tooltip for collapsed state -->
+          <span class="sidebar-tooltip pointer-events-none absolute left-full ml-2 hidden whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 lg:block">
+            <%= link.label %><% if (link.badge && locals[link.badge] > 0) { %> (<%= locals[link.badge] %>)<% } %>
+          </span>
         </a>
       <% }) %>
     </nav>
   </div>
 
-  <div class="border-t border-white/70 p-4">
+  <div class="border-t border-white/70 p-3 sidebar-label-section">
     <div class="rounded-2xl px-3 py-3 text-white shadow-lg" style="background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary)); box-shadow: 0 18px 36px -24px var(--tenant-primary-soft);">
       <div class="flex items-center gap-2">
-        <div class="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
-        <span class="text-xs font-semibold uppercase tracking-[0.24em] text-white/75">Live</span>
+        <div class="h-2.5 w-2.5 rounded-full bg-emerald-400 flex-shrink-0"></div>
+        <span class="sidebar-label text-xs font-semibold uppercase tracking-[0.24em] text-white/75">Live</span>
       </div>
-      <p class="mt-2 text-sm font-semibold capitalize"><%= role.replace('_', ' ') %></p>
-      <p class="text-xs text-white/60">Everything you need for today is one tap away.</p>
+      <p class="sidebar-label mt-2 text-sm font-semibold capitalize"><%= role.replace('_', ' ') %></p>
+      <p class="sidebar-label text-xs text-white/60">Everything you need for today is one tap away.</p>
     </div>
   </div>
 </aside>

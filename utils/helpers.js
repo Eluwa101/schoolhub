@@ -113,10 +113,14 @@ function normalizeSchoolPreferences(preferences) {
   const uiDensity = ['comfortable', 'compact'].includes(p.uiDensity)
     ? p.uiDensity
     : DEFAULT_SCHOOL_PREFERENCES.uiDensity;
+  const senderEmail = typeof p.senderEmail === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.senderEmail)
+    ? p.senderEmail.toLowerCase().trim()
+    : '';
 
   return {
     dateLocale,
     uiDensity,
+    ...(senderEmail ? { senderEmail } : {}),
   };
 }
 

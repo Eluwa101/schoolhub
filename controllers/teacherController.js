@@ -311,6 +311,20 @@ async function getTimetable(req, res, next) {
   }
 }
 
+async function checkTimetableConflict(schoolId, classId, dayOfWeek, startTime, endTime, excludeId = null) {
+  let q = supabaseAdmin
+    .from('timetable')
+    .select('id, start_time, end_time, subjects:subject_id(name)')
+    .eq('school_id', schoolId)
+    .eq('class_id', classId)
+    .eq('day_of_week', parseInt(dayOfWeek))
+    .lt('start_time', endTime)
+    .gt('end_time', startTime);
+  if (excludeId) q = q.neq('id', excludeId);
+  const { data } = await q;
+  return data || [];
+}
+
 async function postTimetableEntry(req, res, next) {
   try {
     const teacherId = req.user.userId;
@@ -324,6 +338,12 @@ async function postTimetableEntry(req, res, next) {
     if (!hasAccess) {
       req.flash('error', 'You do not have access to this class.');
       return res.redirect('/teacher/timetable');
+    }
+    const conflicts = await checkTimetableConflict(req.schoolId, classId, dayOfWeek, startTime, endTime);
+    if (conflicts.length) {
+      const c = conflicts[0];
+      req.flash('error', `Time conflict: ${c.subjects?.name || 'another subject'} is already scheduled ${c.start_time}–${c.end_time} on this day.`);
+      return res.redirect(`/teacher/timetable?classId=${classId}`);
     }
     const { error } = await supabaseAdmin.from('timetable').insert({
       school_id: req.schoolId,
@@ -348,6 +368,14 @@ async function putTimetableEntry(req, res, next) {
   try {
     const { id } = req.params;
     const { classId, subjectId, assignedTeacherId, dayOfWeek, startTime, endTime, room } = req.body;
+    if (classId && dayOfWeek && startTime && endTime) {
+      const conflicts = await checkTimetableConflict(req.schoolId, classId, dayOfWeek, startTime, endTime, id);
+      if (conflicts.length) {
+        const c = conflicts[0];
+        req.flash('error', `Time conflict: ${c.subjects?.name || 'another subject'} is already scheduled ${c.start_time}–${c.end_time} on this day.`);
+        return res.redirect(`/teacher/timetable?classId=${classId}`);
+      }
+    }
     const { error } = await supabaseAdmin.from('timetable').update({
       subject_id: subjectId,
       teacher_id: assignedTeacherId || null,

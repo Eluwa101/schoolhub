@@ -37,6 +37,8 @@ router.delete('/subjects/:id', ...adminOnly, ctrl.deleteSubjectHandler);
 
 router.get('/timetable', ...adminOnly, ctrl.getTimetable);
 router.post('/timetable', ...adminOnly, ctrl.postTimetable);
+router.put('/timetable/:id', ...adminOnly, ctrl.putTimetableEntry);
+router.patch('/timetable/:id', ...adminOnly, ctrl.patchTimetableEntry);
 router.delete('/timetable/:id', ...adminOnly, ctrl.deleteTimetableEntry);
 
 router.get('/announcements', ...adminOnly, ctrl.getAnnouncements);

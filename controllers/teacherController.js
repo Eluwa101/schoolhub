@@ -271,6 +271,127 @@ async function postGradeSubmission(req, res, next) {
   }
 }
 
+async function getTimetable(req, res, next) {
+  try {
+    const teacherId = req.user.userId;
+    const schoolId = req.schoolId;
+
+    const classSubjects = await getClassesForTeacher(teacherId, schoolId);
+    const classMap = new Map();
+    classSubjects.forEach(cs => { if (cs.classes?.id) classMap.set(cs.classes.id, cs.classes); });
+    const classes = [...classMap.values()];
+
+    const selectedClassId = req.query.classId || classes[0]?.id || null;
+
+    let timetableEntries = [];
+    if (selectedClassId) {
+      const { data } = await supabaseAdmin
+        .from('timetable')
+        .select('*, subjects:subject_id(name), classes:class_id(name), teacher:teacher_id(first_name, last_name)')
+        .eq('school_id', schoolId)
+        .eq('class_id', selectedClassId)
+        .order('day_of_week')
+        .order('start_time');
+      timetableEntries = data || [];
+    }
+
+    const { data: subjects } = await supabaseAdmin.from('subjects').select('id, name').eq('school_id', schoolId).order('name');
+    const teachers = await getActiveProfilesBySchool(schoolId, { roles: ['teacher'] });
+
+    res.render('teacher/timetable', {
+      title: 'Timetable',
+      classes,
+      subjects: subjects || [],
+      teachers,
+      timetableEntries,
+      selectedClassId,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postTimetableEntry(req, res, next) {
+  try {
+    const teacherId = req.user.userId;
+    const { classId, subjectId, assignedTeacherId, dayOfWeek, startTime, endTime, room } = req.body;
+    if (!classId || !subjectId || !dayOfWeek || !startTime || !endTime) {
+      req.flash('error', 'Class, subject, day, start time, and end time are required.');
+      return res.redirect(`/teacher/timetable${classId ? `?classId=${classId}` : ''}`);
+    }
+    const classSubjects = await getClassesForTeacher(teacherId, req.schoolId);
+    const hasAccess = classSubjects.some(cs => cs.classes?.id === classId);
+    if (!hasAccess) {
+      req.flash('error', 'You do not have access to this class.');
+      return res.redirect('/teacher/timetable');
+    }
+    const { error } = await supabaseAdmin.from('timetable').insert({
+      school_id: req.schoolId,
+      class_id: classId,
+      subject_id: subjectId,
+      teacher_id: assignedTeacherId || teacherId,
+      day_of_week: parseInt(dayOfWeek),
+      start_time: startTime,
+      end_time: endTime,
+      room: room || null,
+    });
+    if (error) throw error;
+    req.flash('success', 'Timetable entry added.');
+    res.redirect(`/teacher/timetable?classId=${classId}`);
+  } catch (err) {
+    req.flash('error', `Failed to add entry: ${err.message}`);
+    res.redirect(`/teacher/timetable${req.body.classId ? `?classId=${req.body.classId}` : ''}`);
+  }
+}
+
+async function putTimetableEntry(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { classId, subjectId, assignedTeacherId, dayOfWeek, startTime, endTime, room } = req.body;
+    const { error } = await supabaseAdmin.from('timetable').update({
+      subject_id: subjectId,
+      teacher_id: assignedTeacherId || null,
+      day_of_week: parseInt(dayOfWeek),
+      start_time: startTime,
+      end_time: endTime,
+      room: room || null,
+    }).eq('id', id).eq('school_id', req.schoolId);
+    if (error) throw error;
+    req.flash('success', 'Entry updated.');
+    res.redirect(`/teacher/timetable${classId ? `?classId=${classId}` : ''}`);
+  } catch (err) {
+    req.flash('error', `Failed to update entry: ${err.message}`);
+    res.redirect(`/teacher/timetable${req.body.classId ? `?classId=${req.body.classId}` : ''}`);
+  }
+}
+
+async function patchTimetableEntry(req, res, next) {
+  try {
+    const { id } = req.params;
+    const updates = {};
+    if (req.body.dayOfWeek !== undefined) updates.day_of_week = parseInt(req.body.dayOfWeek);
+    const { error } = await supabaseAdmin.from('timetable').update(updates).eq('id', id).eq('school_id', req.schoolId);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+async function deleteTimetableEntry(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { classId } = req.query;
+    const { error } = await supabaseAdmin.from('timetable').delete().eq('id', id).eq('school_id', req.schoolId);
+    if (error) throw error;
+    req.flash('success', 'Entry removed.');
+    res.redirect(`/teacher/timetable${classId ? `?classId=${classId}` : ''}`);
+  } catch (err) {
+    req.flash('error', `Failed to remove entry: ${err.message}`);
+    res.redirect(`/teacher/timetable${req.query.classId ? `?classId=${req.query.classId}` : ''}`);
+  }
+}
+
 async function getMessages(req, res, next) {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -365,6 +486,11 @@ module.exports = {
   postAssignment,
   getSubmissions,
   postGradeSubmission,
+  getTimetable,
+  postTimetableEntry,
+  putTimetableEntry,
+  patchTimetableEntry,
+  deleteTimetableEntry,
   getMessages,
   postMessage,
 };

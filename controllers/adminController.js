@@ -700,6 +700,44 @@ async function postTimetable(req, res, next) {
   }
 }
 
+async function putTimetableEntry(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room } = req.body;
+    if (!subjectId || !dayOfWeek || !startTime || !endTime) {
+      req.flash('error', 'Subject, day, start time, and end time are required.');
+      return res.redirect(`/admin/timetable${classId ? `?classId=${classId}` : ''}`);
+    }
+    const { error } = await supabaseAdmin.from('timetable').update({
+      subject_id: subjectId,
+      teacher_id: teacherId || null,
+      day_of_week: parseInt(dayOfWeek),
+      start_time: startTime,
+      end_time: endTime,
+      room: room || null,
+    }).eq('id', id).eq('school_id', req.schoolId);
+    if (error) throw error;
+    req.flash('success', 'Timetable entry updated.');
+    res.redirect(`/admin/timetable${classId ? `?classId=${classId}` : ''}`);
+  } catch (err) {
+    req.flash('error', `Failed to update entry: ${err.message}`);
+    res.redirect(`/admin/timetable${req.body.classId ? `?classId=${req.body.classId}` : ''}`);
+  }
+}
+
+async function patchTimetableEntry(req, res, next) {
+  try {
+    const { id } = req.params;
+    const updates = {};
+    if (req.body.dayOfWeek !== undefined) updates.day_of_week = parseInt(req.body.dayOfWeek);
+    const { error } = await supabaseAdmin.from('timetable').update(updates).eq('id', id).eq('school_id', req.schoolId);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
 async function deleteTimetableEntry(req, res, next) {
   try {
     const { id } = req.params;
@@ -1072,6 +1110,8 @@ module.exports = {
   deleteSubjectHandler,
   getTimetable,
   postTimetable,
+  putTimetableEntry,
+  patchTimetableEntry,
   deleteTimetableEntry,
   getAnnouncements,
   postAnnouncement,

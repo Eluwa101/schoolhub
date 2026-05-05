@@ -21,6 +21,12 @@ router.post('/assignments', ...teacherOnly, upload.single('file'), ctrl.postAssi
 router.get('/assignments/:id/submissions', ...teacherOnly, ctrl.getSubmissions);
 router.post('/assignments/:id/grade/:studentId', ...teacherOnly, ctrl.postGradeSubmission);
 
+router.get('/timetable', ...teacherOnly, ctrl.getTimetable);
+router.post('/timetable', ...teacherOnly, ctrl.postTimetableEntry);
+router.put('/timetable/:id', ...teacherOnly, ctrl.putTimetableEntry);
+router.patch('/timetable/:id', ...teacherOnly, ctrl.patchTimetableEntry);
+router.delete('/timetable/:id', ...teacherOnly, ctrl.deleteTimetableEntry);
+
 router.get('/messages', ...teacherOnly, ctrl.getMessages);
 router.post('/messages', ...teacherOnly, ctrl.postMessage);
 

@@ -49,4 +49,8 @@ router.post('/messages', ...adminOnly, ctrl.postMessage);
 router.get('/reports', ...adminOnly, ctrl.getReports);
 router.get('/reports/export', ...adminOnly, ctrl.exportReports);
 
+router.get('/admissions', ...adminOnly, ctrl.getAdmissions);
+router.post('/admissions/action', ...adminOnly, ctrl.postAdmitStudents);
+router.delete('/admissions/:id', ...adminOnly, ctrl.deleteAdmissionHandler);
+
 module.exports = router;

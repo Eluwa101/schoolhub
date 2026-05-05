@@ -14,6 +14,7 @@ const { sendInviteEmail, sendNewMessageEmail } = require('../utils/mailer');
 const { parseCsvBuffer, toCsv } = require('../utils/csv');
 const { selectConversation, resolveReplyRecipient, buildConversationThread } = require('../utils/messageCenter');
 const { slugify, normalizeSchoolTheme, normalizeSchoolPreferences } = require('../utils/helpers');
+const { getApplicationsBySchool, getApplicationById, updateApplicationStatus, deleteApplication, getPendingCount } = require('../models/admissionModel');
 
 function csvValue(row, keys) {
   for (const key of keys) {
@@ -910,6 +911,142 @@ async function exportReports(req, res, next) {
   }
 }
 
+// Admissions Management
+async function getAdmissions(req, res, next) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const status = req.query.status || null;
+    const { applications, total } = await getApplicationsBySchool(req.schoolId, { page, status });
+    const classes = await getAllClassesBySchool(req.schoolId);
+    const pendingCount = await getPendingCount(req.schoolId);
+
+    res.render('admin/admissions', {
+      title: 'Admissions',
+      applications,
+      total,
+      page,
+      totalPages: Math.ceil(total / 30),
+      currentStatus: status || '',
+      classes,
+      pendingCount,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postAdmitStudents(req, res, next) {
+  try {
+    let { applicationIds, classId, action } = req.body;
+    if (!applicationIds) {
+      req.flash('error', 'No applications selected.');
+      return res.redirect('/admin/admissions');
+    }
+    if (!Array.isArray(applicationIds)) applicationIds = [applicationIds];
+
+    if (action === 'reject') {
+      await Promise.all(applicationIds.map(id =>
+        updateApplicationStatus(id, req.schoolId, {
+          status: 'rejected',
+          reviewedBy: req.user.userId,
+        })
+      ));
+      req.flash('success', `${applicationIds.length} application(s) rejected.`);
+      return res.redirect('/admin/admissions');
+    }
+
+    // Admit: create student accounts + link parents
+    let admitted = 0;
+    let errors = 0;
+
+    for (const appId of applicationIds) {
+      try {
+        const app = await getApplicationById(appId, req.schoolId);
+        if (!app || app.status !== 'pending') continue;
+
+        const tempPassword = `SchoolHub!${crypto.randomBytes(6).toString('hex')}`;
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: `student.${app.student_first_name.toLowerCase()}.${app.student_last_name.toLowerCase()}.${Date.now().toString(36)}@schoolhub.internal`,
+          password: tempPassword,
+          email_confirm: true,
+        });
+
+        if (authError || !authData?.user) { errors++; continue; }
+
+        const studentProfile = await createProfile({
+          id: authData.user.id,
+          schoolId: req.schoolId,
+          role: 'student',
+          firstName: app.student_first_name,
+          lastName: app.student_last_name,
+        });
+
+        // Link parent to student
+        if (app.parent_id) {
+          await supabaseAdmin
+            .from('parent_students')
+            .upsert({ parent_id: app.parent_id, student_id: authData.user.id }, { onConflict: 'parent_id,student_id' });
+        }
+
+        // Enroll in class if selected
+        const targetClassId = classId || app.assigned_class_id;
+        if (targetClassId) {
+          const classes = await getAllClassesBySchool(req.schoolId);
+          const cls = classes.find(c => c.id === targetClassId);
+          if (cls) {
+            await enrollStudent({
+              studentId: authData.user.id,
+              classId: targetClassId,
+              academicYear: cls.academic_year || new Date().getFullYear().toString(),
+            });
+          }
+        }
+
+        await updateApplicationStatus(appId, req.schoolId, {
+          status: 'accepted',
+          reviewedBy: req.user.userId,
+          assignedClassId: targetClassId || null,
+          studentId: authData.user.id,
+        });
+
+        // Send password reset so student can set their own password
+        if (app.parent_id) {
+          const { data: parentAuth } = await supabaseAdmin.auth.admin.getUserById(app.parent_id);
+          if (parentAuth?.user?.email) {
+            sendNewMessageEmail({
+              to: parentAuth.user.email,
+              senderName: req.session.user.schoolName,
+              messageSubject: `Admission Accepted — ${app.student_first_name} ${app.student_last_name}`,
+              appUrl: process.env.APP_URL,
+            }).catch(() => {});
+          }
+        }
+
+        admitted++;
+      } catch (e) {
+        errors++;
+      }
+    }
+
+    req.flash('success', `${admitted} student(s) admitted successfully.${errors ? ` ${errors} failed.` : ''}`);
+    res.redirect('/admin/admissions');
+  } catch (err) {
+    req.flash('error', `Admission failed: ${err.message}`);
+    res.redirect('/admin/admissions');
+  }
+}
+
+async function deleteAdmissionHandler(req, res, next) {
+  try {
+    await deleteApplication(req.params.id, req.schoolId);
+    req.flash('success', 'Application removed.');
+    res.redirect('/admin/admissions');
+  } catch (err) {
+    req.flash('error', `Failed to remove application: ${err.message}`);
+    res.redirect('/admin/admissions');
+  }
+}
+
 module.exports = {
   getDashboard,
   getSettings,
@@ -943,4 +1080,7 @@ module.exports = {
   postMessage,
   getReports,
   exportReports,
+  getAdmissions,
+  postAdmitStudents,
+  deleteAdmissionHandler,
 };

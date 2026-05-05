@@ -30,9 +30,11 @@
   <%- include('partials/navbar') %>
   <div class="relative flex h-screen overflow-hidden pt-16">
     <%- include('partials/sidebar') %>
-    <main class="relative flex-1 overflow-y-auto p-6 lg:p-8">
+    <main class="relative flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 min-w-0">
       <%- include('partials/flash') %>
-      <%- body %>
+      <div class="max-w-screen-xl mx-auto">
+        <%- body %>
+      </div>
     </main>
   </div>
 <% } else { %>

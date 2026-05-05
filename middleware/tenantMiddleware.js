@@ -1,5 +1,6 @@
 const { getSchoolById } = require('../models/schoolModel');
 const { normalizeSchoolTheme, normalizeSchoolPreferences } = require('../utils/helpers');
+const { getPendingCount } = require('../models/admissionModel');
 
 async function attachTenant(req, res, next) {
   try {
@@ -16,6 +17,12 @@ async function attachTenant(req, res, next) {
         res.locals.currentSchool = school;
         res.locals.schoolTheme = schoolTheme;
         res.locals.schoolPreferences = schoolPreferences;
+
+        // Pending admission badge for admins
+        const role = req.session.user?.role;
+        if (role === 'school_admin' || role === 'super_admin') {
+          res.locals.pendingAdmissions = await getPendingCount(req.schoolId).catch(() => 0);
+        }
 
         if (req.session.user) {
           req.session.user.schoolName = school?.name || req.session.user.schoolName;

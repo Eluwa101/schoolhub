@@ -3,29 +3,38 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
   <% if (classSubjects && classSubjects.length) { %>
     <% classSubjects.forEach(cs => { %>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all">
         <div class="flex items-center justify-between mb-3">
-          <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium"><%= cs.subjects?.code || 'Subject' %></span>
+          <% if (cs.isHomeroom) { %>
+            <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Homeroom</span>
+          <% } else { %>
+            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium"><%= cs.subjects?.code || 'Subject' %></span>
+          <% } %>
           <span class="text-xs text-gray-400"><%= cs.classes?.academic_year %></span>
         </div>
         <h3 class="font-semibold text-gray-900"><%= cs.classes?.name %></h3>
-        <p class="text-sm text-gray-500 mt-1"><%= cs.subjects?.name %></p>
+        <p class="text-sm text-gray-500 mt-1"><%= cs.subjects?.name || 'Class teacher' %></p>
         <div class="flex gap-2 mt-4">
           <a href="/teacher/attendance/<%= cs.classes?.id %>"
              class="flex-1 text-center py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
             Attendance
           </a>
-          <a href="/teacher/grades/<%= cs.classes?.id %>/<%= cs.subjects?.id %>"
-             class="flex-1 text-center py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
-            Gradebook
-          </a>
+          <% if (cs.subjects?.id) { %>
+            <a href="/teacher/grades/<%= cs.classes?.id %>/<%= cs.subjects?.id %>"
+               class="flex-1 text-center py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
+              Gradebook
+            </a>
+          <% } %>
         </div>
       </div>
     <% }) %>
   <% } else { %>
     <div class="col-span-3 text-center py-16 text-gray-400">
-      <p>You haven't been assigned to any classes yet.</p>
-      <p class="text-sm mt-1">Contact your school admin to get assigned.</p>
+      <svg class="mx-auto w-12 h-12 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5zm0 7v-7m9-5v7m-18 0v-7" />
+      </svg>
+      <p class="font-medium">No classes assigned yet</p>
+      <p class="text-sm mt-1">Contact your school admin to get assigned to a class.</p>
     </div>
   <% } %>
 </div>

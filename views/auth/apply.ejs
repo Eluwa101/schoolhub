@@ -1,0 +1,119 @@
+<div class="w-full max-w-2xl mx-auto">
+  <!-- School header -->
+  <div class="text-center mb-8">
+    <div class="flex items-center justify-center gap-3 mb-4">
+      <% if (school.logo_url) { %>
+        <img src="<%= school.logo_url %>" class="h-14 w-14 rounded-2xl object-cover shadow-lg" alt="<%= school.name %>" />
+      <% } else { %>
+        <div class="h-14 w-14 rounded-2xl flex items-center justify-center shadow-lg text-white text-xl font-bold"
+             style="background: linear-gradient(135deg, var(--tenant-primary, #4f46e5), var(--tenant-secondary, #0ea5e9));">
+          <%= school.name[0] %>
+        </div>
+      <% } %>
+    </div>
+    <h1 class="text-2xl font-bold text-gray-900"><%= school.name %></h1>
+    <p class="text-gray-500 mt-1">Student Admission Application</p>
+  </div>
+
+  <div class="bg-white/90 backdrop-blur rounded-[28px] border border-white/70 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] p-8">
+    <%- include('../partials/flash') %>
+
+    <form method="POST" action="/auth/apply/<%= school.slug %>" class="space-y-8">
+
+      <!-- Parent / Guardian Info -->
+      <div>
+        <h2 class="text-base font-semibold text-gray-900 mb-1">Parent / Guardian Information</h2>
+        <p class="text-sm text-gray-400 mb-4">This will be your account on SchoolHub.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
+            <input type="text" name="parentFirstName" required placeholder="Ada"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
+            <input type="text" name="parentLastName" required placeholder="Okafor"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-red-500">*</span></label>
+            <input type="email" name="parentEmail" required placeholder="ada@example.com"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <input type="tel" name="parentPhone" placeholder="+234 800 000 0000"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Create Password <span class="text-red-500">*</span></label>
+            <input type="password" name="password" required minlength="8" placeholder="At least 8 characters"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">You'll use this to log in and track your child's admission status.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-100"></div>
+
+      <!-- Student Info -->
+      <div>
+        <h2 class="text-base font-semibold text-gray-900 mb-1">Student Information</h2>
+        <p class="text-sm text-gray-400 mb-4">Details about the child applying for admission.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
+            <input type="text" name="studentFirstName" required placeholder="Chidi"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
+            <input type="text" name="studentLastName" required placeholder="Okafor"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+            <input type="date" name="studentDob"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+            <select name="studentGender"
+                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none">
+              <option value="">Prefer not to say</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Desired Grade / Class Level</label>
+            <input type="text" name="desiredGradeLevel" placeholder="e.g. Grade 5, JSS 1, Year 7"
+                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+            <textarea name="notes" rows="3" placeholder="Any additional information for the school..."
+                      class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none resize-none"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 pt-2">
+        <a href="/auth/login"
+           class="flex-1 text-center rounded-full border border-gray-300 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+          Already have an account? Sign In
+        </a>
+        <button type="submit"
+                class="flex-1 rounded-full py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5"
+                style="background: linear-gradient(135deg, var(--tenant-primary, #4f46e5), var(--tenant-secondary, #0ea5e9)); box-shadow: 0 12px 28px -18px var(--tenant-primary, #4f46e5);">
+          Submit Application
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <p class="text-center text-xs text-gray-400 mt-6">
+    Powered by <strong>SchoolHub</strong> &mdash; School Management for Modern Schools
+  </p>
+</div>

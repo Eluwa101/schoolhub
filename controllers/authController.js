@@ -6,6 +6,7 @@ const { createSchool, getSchoolBySlug } = require('../models/schoolModel');
 const { verifyInviteToken, markTokenUsed } = require('../utils/inviteToken');
 const { slugify, rolePrefix } = require('../utils/helpers');
 const { sendPasswordResetEmail } = require('../utils/mailer');
+const { createApplication } = require('../models/admissionModel');
 
 function buildSession(profile, school) {
   return {
@@ -390,6 +391,139 @@ async function postProfileSettings(req, res, next) {
   }
 }
 
+// GET /auth/apply/:schoolSlug — public admission page
+async function getApply(req, res, next) {
+  try {
+    const { schoolSlug } = req.params;
+    const school = await getSchoolBySlug(schoolSlug);
+    if (!school) {
+      return res.status(404).render('errors/404', { title: 'School Not Found', layout: 'layout' });
+    }
+    if (req.session.user) {
+      return res.redirect(`/${rolePrefix(req.session.user.role)}/dashboard`);
+    }
+    res.render('auth/apply', { title: `Apply to ${school.name}`, school, layout: 'layout' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /auth/apply/:schoolSlug
+async function postApply(req, res, next) {
+  try {
+    const { schoolSlug } = req.params;
+    const school = await getSchoolBySlug(schoolSlug);
+    if (!school) {
+      req.flash('error', 'School not found.');
+      return res.redirect('/auth/login');
+    }
+
+    const {
+      parentFirstName, parentLastName, parentEmail, parentPhone, password,
+      studentFirstName, studentLastName, studentDob, studentGender,
+      desiredGradeLevel, notes,
+    } = req.body;
+
+    if (!parentFirstName || !parentLastName || !parentEmail || !studentFirstName || !studentLastName) {
+      req.flash('error', 'Please fill in all required fields.');
+      return res.redirect(`/auth/apply/${schoolSlug}`);
+    }
+
+    if (!password || password.length < 8) {
+      req.flash('error', 'Password must be at least 8 characters.');
+      return res.redirect(`/auth/apply/${schoolSlug}`);
+    }
+
+    // Check if email already exists
+    const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    const existingAuthUser = (allUsers?.users || []).find(u => u.email?.toLowerCase() === parentEmail.toLowerCase());
+
+    let authUserId;
+
+    if (existingAuthUser) {
+      // Verify they don't already have a profile in THIS school
+      const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, school_id')
+        .eq('id', existingAuthUser.id)
+        .single();
+
+      if (existingProfile && existingProfile.school_id === school.id) {
+        req.flash('error', 'An account with this email already exists for this school. Please log in instead.');
+        return res.redirect(`/auth/login`);
+      }
+      authUserId = existingAuthUser.id;
+    } else {
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: parentEmail,
+        password,
+        email_confirm: true,
+      });
+      if (authError) {
+        req.flash('error', authError.message);
+        return res.redirect(`/auth/apply/${schoolSlug}`);
+      }
+      authUserId = authData.user.id;
+    }
+
+    // Create parent profile linked to this school
+    let profile;
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', authUserId)
+      .single();
+
+    if (!existingProfile) {
+      profile = await createProfile({
+        id: authUserId,
+        schoolId: school.id,
+        role: 'parent',
+        firstName: parentFirstName,
+        lastName: parentLastName,
+        phone: parentPhone || null,
+      });
+    } else {
+      profile = existingProfile;
+    }
+
+    // Create admission application
+    await createApplication({
+      schoolId: school.id,
+      parentId: authUserId,
+      parentEmail,
+      parentFirstName,
+      parentLastName,
+      parentPhone: parentPhone || null,
+      studentFirstName,
+      studentLastName,
+      studentDob: studentDob || null,
+      studentGender: studentGender || null,
+      desiredGradeLevel: desiredGradeLevel || null,
+      notes: notes || null,
+    });
+
+    // Refresh profile to get full data
+    const fullProfile = await getProfileById(authUserId).catch(() => null) || {
+      id: authUserId,
+      school_id: school.id,
+      role: 'parent',
+      first_name: parentFirstName,
+      last_name: parentLastName,
+      email: parentEmail,
+      is_active: true,
+    };
+
+    // Log the parent in
+    req.session.user = buildSession(fullProfile, school);
+    req.flash('success', `Application submitted! Welcome, ${parentFirstName}. You'll be notified when your child is admitted.`);
+    req.session.save(() => res.redirect('/parent/dashboard'));
+  } catch (err) {
+    req.flash('error', `Application failed: ${err.message}`);
+    res.redirect(`/auth/apply/${req.params.schoolSlug}`);
+  }
+}
+
 module.exports = {
   getLogin,
   postLogin,
@@ -409,4 +543,6 @@ module.exports = {
   postResetPassword,
   getProfileSettings,
   postProfileSettings,
+  getApply,
+  postApply,
 };

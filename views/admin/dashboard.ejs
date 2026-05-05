@@ -55,6 +55,21 @@
   </div>
 </div>
 
+<% if (pendingAdmissions > 0) { %>
+<a href="/admin/admissions?status=pending"
+   class="mb-6 flex items-center gap-4 rounded-[22px] border border-amber-200 bg-amber-50/70 p-4 transition hover:bg-amber-50 block">
+  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+    </svg>
+  </div>
+  <div>
+    <p class="font-semibold text-amber-900"><%= pendingAdmissions %> pending admission<%= pendingAdmissions !== 1 ? 's' : '' %> awaiting review</p>
+    <p class="text-sm text-amber-600">Click to review and admit students →</p>
+  </div>
+</a>
+<% } %>
+
 <!-- Recent Activity -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">

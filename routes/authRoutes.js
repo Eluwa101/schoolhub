@@ -12,6 +12,7 @@ const {
   getForgotPassword, postForgotPassword,
   getResetPassword, postResetPassword,
   getProfileSettings, postProfileSettings,
+  getApply, postApply,
 } = require('../controllers/authController');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -44,5 +45,9 @@ router.post('/reset-password', postResetPassword);
 
 router.get('/profile', isAuthenticated, getProfileSettings);
 router.post('/profile', isAuthenticated, upload.single('avatar'), postProfileSettings);
+
+// Public admission application (parent self-registration)
+router.get('/apply/:schoolSlug', getApply);
+router.post('/apply/:schoolSlug', postApply);
 
 module.exports = router;

@@ -1,0 +1,252 @@
+<%- include('../partials/header') %>
+
+<div class="space-y-6">
+  <!-- Header + stats + filter -->
+  <section class="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <h1 class="text-lg font-bold text-gray-900">Admission Applications</h1>
+        <% if (pendingCount > 0) { %>
+          <p class="text-sm text-amber-600 mt-0.5"><%= pendingCount %> application<%= pendingCount !== 1 ? 's' : '' %> awaiting review</p>
+        <% } else { %>
+          <p class="text-sm text-gray-400 mt-0.5">No pending applications</p>
+        <% } %>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <% [['', 'All'], ['pending', 'Pending'], ['accepted', 'Accepted'], ['rejected', 'Rejected']].forEach(([val, label]) => { %>
+          <a href="/admin/admissions<%= val ? '?status=' + val : '' %>"
+             class="rounded-full px-3 py-1.5 text-sm font-semibold transition
+             <%= currentStatus === val ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50' %>">
+            <%= label %>
+          </a>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+
+  <!-- Admission link for sharing -->
+  <section class="rounded-[28px] border border-emerald-100 bg-emerald-50/60 p-5">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold text-emerald-800">Share Your Admission Link</p>
+        <p class="text-xs text-emerald-600 mt-0.5">Parents use this link to apply and register their children.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <code class="rounded-xl bg-white px-3 py-1.5 text-xs text-emerald-700 border border-emerald-200 select-all">
+          <%= appUrl %>/auth/apply/<%= currentSchool?.slug %>
+        </code>
+        <button type="button"
+                onclick="navigator.clipboard.writeText('<%= appUrl %>/auth/apply/<%= currentSchool?.slug %>'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500)"
+                class="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition">
+          Copy
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Batch action form wrapping the whole table -->
+  <form method="POST" action="/admin/admissions/action" id="admissions-form">
+    <div class="overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+
+      <!-- Batch toolbar (shown when items selected) -->
+      <div id="batch-toolbar" class="hidden items-center gap-3 px-6 py-3 bg-indigo-50 border-b border-indigo-100">
+        <span id="selected-count" class="text-sm font-semibold text-indigo-700">0 selected</span>
+        <div class="flex items-center gap-2 ml-auto flex-wrap">
+          <% if (classes && classes.length) { %>
+            <select name="classId"
+                    class="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="">No class assignment</option>
+              <% classes.forEach(cls => { %>
+                <option value="<%= cls.id %>"><%= cls.name %> (<%= cls.academic_year %>)</option>
+              <% }) %>
+            </select>
+          <% } %>
+          <button type="submit" name="action" value="admit"
+                  onclick="return confirm('Admit selected students and create their accounts?')"
+                  class="rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+            Admit Selected
+          </button>
+          <button type="submit" name="action" value="reject"
+                  onclick="return confirm('Reject the selected applications?')"
+                  class="rounded-full bg-rose-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-rose-700 transition">
+            Reject Selected
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-100">
+          <thead class="bg-gray-50/80">
+            <tr>
+              <th class="px-4 py-3 w-10">
+                <input type="checkbox" id="select-all" class="rounded border-gray-300" />
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Student</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 hidden sm:table-cell">Parent</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 hidden md:table-cell">Grade</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 hidden lg:table-cell">Applied</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            <% if (applications && applications.length) { %>
+              <% applications.forEach(app => { %>
+                <tr class="transition hover:bg-indigo-50/20">
+                  <td class="px-4 py-4">
+                    <% if (app.status === 'pending') { %>
+                      <input type="checkbox" name="applicationIds" value="<%= app.id %>"
+                             class="app-checkbox rounded border-gray-300" />
+                    <% } %>
+                  </td>
+                  <td class="px-4 py-4">
+                    <p class="text-sm font-semibold text-gray-900"><%= app.student_first_name %> <%= app.student_last_name %></p>
+                    <% if (app.student_dob) { %>
+                      <p class="text-xs text-gray-400">DOB: <%= app.student_dob %></p>
+                    <% } %>
+                    <% if (app.student_gender) { %>
+                      <p class="text-xs text-gray-400 capitalize"><%= app.student_gender %></p>
+                    <% } %>
+                  </td>
+                  <td class="px-4 py-4 hidden sm:table-cell">
+                    <p class="text-sm text-gray-700"><%= app.parent_first_name %> <%= app.parent_last_name %></p>
+                    <p class="text-xs text-gray-400"><%= app.parent_email %></p>
+                    <% if (app.parent_phone) { %><p class="text-xs text-gray-400"><%= app.parent_phone %></p><% } %>
+                  </td>
+                  <td class="px-4 py-4 hidden md:table-cell">
+                    <span class="text-sm text-gray-600"><%= app.desired_grade_level || '—' %></span>
+                  </td>
+                  <td class="px-4 py-4">
+                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize
+                      <%= app.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                          app.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                          'bg-rose-100 text-rose-700' %>">
+                      <%= app.status %>
+                    </span>
+                  </td>
+                  <td class="px-4 py-4 text-xs text-gray-400 hidden lg:table-cell"><%= formatDate(app.created_at) %></td>
+                  <td class="px-4 py-4 text-right">
+                    <% if (app.status === 'pending') { %>
+                      <button type="button"
+                              onclick="openSingleAdmit('<%= app.id %>')"
+                              class="text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition mr-3">
+                        Review
+                      </button>
+                    <% } %>
+                    <form method="POST" action="/admin/admissions/<%= app.id %>?_method=DELETE" class="inline"
+                          onsubmit="return confirm('Delete this application?')">
+                      <input type="hidden" name="_method" value="DELETE" />
+                      <button type="submit" class="text-xs font-semibold text-rose-400 hover:text-rose-600 transition">
+                        Delete
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="7" class="py-16 text-center text-gray-400">
+                  <svg class="mx-auto w-10 h-10 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p class="font-medium">No applications found</p>
+                  <p class="text-sm mt-1">Share your admission link so parents can apply.</p>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if (totalPages > 1) { %>
+        <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+          <p class="text-sm text-gray-500">Page <%= page %> of <%= totalPages %> (<%= total %> total)</p>
+          <div class="flex gap-2">
+            <% if (page > 1) { %>
+              <a href="/admin/admissions?page=<%= page - 1 %><%= currentStatus ? '&status=' + currentStatus : '' %>"
+                 class="rounded-full border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Previous</a>
+            <% } %>
+            <% if (page < totalPages) { %>
+              <a href="/admin/admissions?page=<%= page + 1 %><%= currentStatus ? '&status=' + currentStatus : '' %>"
+                 class="rounded-full border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Next</a>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </form>
+</div>
+
+<!-- Single-admit review modal -->
+<div id="single-admit-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl">
+    <div class="mb-6 flex items-center justify-between">
+      <h2 class="text-lg font-bold text-gray-900">Admit Student</h2>
+      <button type="button" onclick="document.getElementById('single-admit-modal').classList.add('hidden')"
+              class="text-gray-400 hover:text-gray-700">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <form method="POST" action="/admin/admissions/action" class="space-y-4">
+      <input type="hidden" name="applicationIds" id="single-app-id" />
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Assign to Class (optional)</label>
+        <select name="classId"
+                class="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="">No class yet</option>
+          <% (classes || []).forEach(cls => { %>
+            <option value="<%= cls.id %>"><%= cls.name %> (<%= cls.academic_year %>)</option>
+          <% }) %>
+        </select>
+      </div>
+      <p class="text-sm text-gray-500">A student account will be created. The parent will be notified.</p>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('single-admit-modal').classList.add('hidden')"
+                class="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" name="action" value="admit"
+                class="flex-1 rounded-full bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+          Admit Student
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.app-checkbox');
+    const toolbar = document.getElementById('batch-toolbar');
+    const countEl = document.getElementById('selected-count');
+
+    function updateToolbar() {
+      const checked = document.querySelectorAll('.app-checkbox:checked');
+      if (checked.length > 0) {
+        toolbar.classList.remove('hidden');
+        toolbar.classList.add('flex');
+        countEl.textContent = checked.length + ' selected';
+      } else {
+        toolbar.classList.add('hidden');
+        toolbar.classList.remove('flex');
+      }
+    }
+
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+        updateToolbar();
+      });
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateToolbar));
+  });
+
+  function openSingleAdmit(id) {
+    document.getElementById('single-app-id').value = id;
+    document.getElementById('single-admit-modal').classList.remove('hidden');
+  }
+</script>

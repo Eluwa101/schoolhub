@@ -6,7 +6,11 @@ async function getProfileById(id) {
     .select('*, schools:school_id (id, name, slug, logo_url)')
     .eq('id', id)
     .single();
-  if (error) throw error;
+  if (error) {
+    // PGRST116 = no rows found — return null instead of throwing
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
   return data;
 }
 

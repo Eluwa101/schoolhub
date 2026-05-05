@@ -118,15 +118,34 @@ async function removeStudentFromClass(studentId, classId) {
 }
 
 async function getClassesForTeacher(teacherId, schoolId) {
-  const { data, error } = await supabaseAdmin
-    .from('class_subjects')
-    .select(`
-      classes:class_id (id, name, grade_level, academic_year, school_id),
-      subjects:subject_id (id, name, code)
-    `)
-    .eq('teacher_id', teacherId);
-  if (error) throw error;
-  return data.filter(cs => cs.classes?.school_id === schoolId);
+  const [{ data: subjectRows, error: e1 }, { data: homeroomRows, error: e2 }] = await Promise.all([
+    supabaseAdmin
+      .from('class_subjects')
+      .select(`
+        id,
+        classes:class_id (id, name, grade_level, academic_year, school_id),
+        subjects:subject_id (id, name, code)
+      `)
+      .eq('teacher_id', teacherId),
+    supabaseAdmin
+      .from('classes')
+      .select('id, name, grade_level, academic_year, school_id')
+      .eq('class_teacher_id', teacherId)
+      .eq('school_id', schoolId),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+
+  const results = (subjectRows || []).filter(cs => cs.classes?.school_id === schoolId);
+  const seenClassIds = new Set(results.map(cs => cs.classes?.id).filter(Boolean));
+
+  (homeroomRows || []).forEach(cls => {
+    if (!seenClassIds.has(cls.id)) {
+      results.push({ id: null, classes: cls, subjects: null, isHomeroom: true });
+    }
+  });
+
+  return results;
 }
 
 async function getClassesForStudent(studentId, schoolId) {

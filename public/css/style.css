@@ -169,6 +169,8 @@ tbody tr:hover {
     right: 0 !important;
     top: auto !important;
     transform: none !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
   }
   .modal-overlay {
     align-items: flex-end !important;

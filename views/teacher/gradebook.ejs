@@ -17,7 +17,7 @@
   </form>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+<div class="overflow-x-auto rounded-xl shadow-sm border border-gray-100 bg-white mb-6">
   <div class="px-6 py-4 bg-blue-600">
     <h2 class="text-white font-semibold"><%= className %> · <%= subjectName %></h2>
   </div>
@@ -70,7 +70,7 @@
 <!-- Add Grade Form -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
   <h2 class="font-semibold text-gray-900 mb-4">Add Grade</h2>
-  <form method="POST" action="/teacher/grades" class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+  <form method="POST" action="/teacher/grades" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
     <input type="hidden" name="classId" value="<%= classId %>" />
     <input type="hidden" name="subjectId" value="<%= subjectId %>" />
     <div>

@@ -8,7 +8,7 @@
   </button>
 </div>
 
-<div class="overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+<div class="overflow-x-auto rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
   <table class="min-w-full divide-y divide-gray-100">
     <thead class="bg-gray-50/80">
       <tr>
@@ -66,8 +66,8 @@
   </div>
 <% } %>
 
-<div id="add-class-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-  <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl">
+<div id="add-class-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
     <div class="mb-6 flex items-center justify-between">
       <h2 class="text-lg font-bold text-gray-900">New Class</h2>
       <button type="button" onclick="document.getElementById('add-class-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">
@@ -110,8 +110,8 @@
 
 <% if (classes && classes.length) { %>
   <% classes.forEach(cls => { %>
-    <div id="edit-class-<%= cls.id %>" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl">
+    <div id="edit-class-<%= cls.id %>" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div class="mb-6 flex items-center justify-between">
           <h2 class="text-lg font-bold text-gray-900">Edit <%= cls.name %></h2>
           <button type="button" onclick="document.getElementById('edit-class-<%= cls.id %>').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">

@@ -1,15 +1,15 @@
 <%- include('../partials/header') %>
 
-<div class="flex items-center gap-4 mb-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-  <div class="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
+<div class="flex flex-wrap items-center gap-4 mb-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+  <div class="w-14 h-14 flex-shrink-0 rounded-full bg-orange-100 flex items-center justify-center">
     <span class="text-orange-700 font-bold text-xl"><%= child.first_name[0] %></span>
   </div>
-  <div>
-    <h2 class="text-lg font-bold text-gray-900"><%= child.first_name %> <%= child.last_name %></h2>
-    <p class="text-sm text-gray-500"><%= classEnrollments.map(e => e.class?.name).join(', ') || 'No classes' %></p>
+  <div class="min-w-0 flex-1">
+    <h2 class="text-lg font-bold text-gray-900 truncate"><%= child.first_name %> <%= child.last_name %></h2>
+    <p class="text-sm text-gray-500 truncate"><%= classEnrollments.map(e => e.class?.name).join(', ') || 'No classes' %></p>
   </div>
   <!-- Attendance summary badges -->
-  <div class="ml-auto flex gap-3 text-center">
+  <div class="flex gap-3 text-center">
     <div class="bg-green-50 rounded-xl px-4 py-2">
       <p class="font-bold text-green-600"><%= attendanceSummary.total > 0 ? Math.round((attendanceSummary.present/attendanceSummary.total)*100) : 0 %>%</p>
       <p class="text-xs text-gray-500">Attendance</p>

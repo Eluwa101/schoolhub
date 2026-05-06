@@ -503,6 +503,243 @@ async function postMessage(req, res, next) {
   }
 }
 
+async function getStudents(req, res, next) {
+  try {
+    const teacherId = req.user.userId;
+    const schoolId = req.schoolId;
+
+    const classSubjects = await getClassesForTeacher(teacherId, schoolId);
+    // getClassesForTeacher returns { id, classes: {id,name,...}, subjects: {id,name,code} }
+    const classMap = new Map();
+    classSubjects.forEach(cs => {
+      const cid = cs.classes?.id;
+      if (cid && !classMap.has(cid)) classMap.set(cid, cs.classes);
+    });
+    const classes = Array.from(classMap.entries()).map(([id, c]) => ({ id, ...c }));
+
+    const selectedClassId = req.query.classId || (classes[0]?.id ?? null);
+    const selectedSubjectId = req.query.subjectId || null;
+
+    const subjectsForClass = selectedClassId
+      ? classSubjects
+          .filter(cs => cs.classes?.id === selectedClassId && cs.subjects)
+          .map(cs => ({ id: cs.subjects.id, ...cs.subjects }))
+      : [];
+
+    let students = [];
+    if (selectedClassId) {
+      students = await getStudentsInClass(selectedClassId, schoolId);
+
+      // Fetch grades for this class (optionally filtered by subject)
+      let gradesQuery = supabaseAdmin
+        .from('grades')
+        .select('student_id, score, max_score, subject_id')
+        .eq('school_id', schoolId)
+        .eq('class_id', selectedClassId);
+      if (selectedSubjectId) gradesQuery = gradesQuery.eq('subject_id', selectedSubjectId);
+      const { data: grades } = await gradesQuery;
+
+      // Fetch attendance for this class
+      const { data: attendance } = await supabaseAdmin
+        .from('attendance')
+        .select('student_id, status')
+        .eq('school_id', schoolId)
+        .eq('class_id', selectedClassId);
+
+      // Build per-student stats
+      const gradesByStudent = {};
+      (grades || []).forEach(g => {
+        if (!gradesByStudent[g.student_id]) gradesByStudent[g.student_id] = { total: 0, max: 0 };
+        gradesByStudent[g.student_id].total += g.score || 0;
+        gradesByStudent[g.student_id].max += g.max_score || 100;
+      });
+
+      const attByStudent = {};
+      (attendance || []).forEach(a => {
+        if (!attByStudent[a.student_id]) attByStudent[a.student_id] = { present: 0, total: 0 };
+        attByStudent[a.student_id].total++;
+        if (a.status === 'present') attByStudent[a.student_id].present++;
+      });
+
+      // getStudentsInClass returns { student_id, class_id, student: { id, first_name, last_name, avatar_url } }
+      students = students.map(s => {
+        const profile = s.student || {};
+        const sid = s.student_id;
+        const g = gradesByStudent[sid];
+        const a = attByStudent[sid];
+        return {
+          id: profile.id || sid,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          avatar_url: profile.avatar_url,
+          avgGrade: g && g.max > 0 ? Math.round((g.total / g.max) * 100) : null,
+          attPct: a && a.total > 0 ? Math.round((a.present / a.total) * 100) : null,
+        };
+      });
+    }
+
+    res.render('teacher/students', {
+      title: 'Students',
+      classes,
+      selectedClassId,
+      subjectsForClass,
+      selectedSubjectId,
+      students,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getStudentProfile(req, res, next) {
+  try {
+    const teacherId = req.user.userId;
+    const schoolId = req.schoolId;
+    const { studentId } = req.params;
+
+    // Verify teacher has access — student must be in one of teacher's classes
+    const classSubjects = await getClassesForTeacher(teacherId, schoolId);
+    // getClassesForTeacher returns { classes: {id,...}, subjects: {id,...} }
+    const classIds = [...new Set(classSubjects.map(cs => cs.classes?.id).filter(Boolean))];
+
+    const { data: enrollment } = await supabaseAdmin
+      .from('student_classes')
+      .select('class_id')
+      .eq('student_id', studentId)
+      .in('class_id', classIds.length ? classIds : ['__none__'])
+      .limit(1);
+
+    if (!enrollment || enrollment.length === 0) {
+      req.flash('error', 'Student not found in your classes.');
+      return res.redirect('/teacher/students');
+    }
+
+    // Student profile
+    const { data: student } = await supabaseAdmin
+      .from('profiles')
+      .select('id, first_name, last_name, avatar_url, phone, created_at')
+      .eq('id', studentId)
+      .eq('school_id', schoolId)
+      .single();
+
+    if (!student) {
+      req.flash('error', 'Student not found.');
+      return res.redirect('/teacher/students');
+    }
+
+    // Student's enrolled classes (with names)
+    const { data: studentClasses } = await supabaseAdmin
+      .from('student_classes')
+      .select('class_id, classes:class_id(id, name)')
+      .eq('student_id', studentId)
+      .in('class_id', classIds.length ? classIds : ['__none__']);
+
+    const studentClassIds = (studentClasses || []).map(sc => sc.class_id).filter(Boolean);
+
+    // Teacher's subjects for these classes
+    const mySubjects = classSubjects
+      .filter(cs => cs.subjects && studentClassIds.includes(cs.classes?.id))
+      .map(cs => ({ id: cs.subjects.id, name: cs.subjects.name }));
+    const mySubjectIds = [...new Set(mySubjects.map(s => s.id))];
+
+    // Grades for this student in teacher's subjects
+    const { data: grades } = await supabaseAdmin
+      .from('grades')
+      .select('id, score, max_score, assessment_type, term, academic_year, notes, subject_id, subjects:subject_id(name)')
+      .eq('student_id', studentId)
+      .eq('school_id', schoolId)
+      .in('subject_id', mySubjectIds.length ? mySubjectIds : ['__none__'])
+      .order('created_at', { ascending: false });
+
+    // Group grades by subject
+    const gradesBySubject = {};
+    (grades || []).forEach(g => {
+      const subName = g.subjects?.name || 'Unknown';
+      if (!gradesBySubject[subName]) gradesBySubject[subName] = { grades: [], avg: null };
+      gradesBySubject[subName].grades.push(g);
+    });
+    Object.keys(gradesBySubject).forEach(sub => {
+      const gs = gradesBySubject[sub].grades;
+      const tot = gs.reduce((a, g) => a + (g.score || 0), 0);
+      const max = gs.reduce((a, g) => a + (g.max_score || 100), 0);
+      gradesBySubject[sub].avg = max > 0 ? Math.round((tot / max) * 100) : null;
+    });
+
+    // Attendance for this student in teacher's classes
+    const { data: attendance } = await supabaseAdmin
+      .from('attendance')
+      .select('id, date, status, notes, subjects:subject_id(name), classes:class_id(name)')
+      .eq('student_id', studentId)
+      .eq('school_id', schoolId)
+      .in('class_id', studentClassIds.length ? studentClassIds : ['__none__'])
+      .order('date', { ascending: false })
+      .limit(30);
+
+    const attTotal = (attendance || []).length;
+    const attPresent = (attendance || []).filter(a => a.status === 'present').length;
+    const attPct = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : null;
+
+    // Linked parents
+    const { data: parents } = await supabaseAdmin
+      .from('parent_students')
+      .select('parent:parent_id(id, first_name, last_name)')
+      .eq('student_id', studentId)
+      .eq('school_id', schoolId);
+
+    // Teacher notes (graceful fallback if table doesn't exist)
+    let notes = [];
+    try {
+      const { data: notesData } = await supabaseAdmin
+        .from('teacher_notes')
+        .select('id, note, created_at, teacher:teacher_id(first_name, last_name)')
+        .eq('student_id', studentId)
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+      notes = notesData || [];
+    } catch (_) {}
+
+    res.render('teacher/student-profile', {
+      title: `${student.first_name} ${student.last_name}`,
+      student,
+      studentClasses: studentClasses || [],
+      gradesBySubject,
+      attendance: attendance || [],
+      attPct,
+      parents: (parents || []).map(p => p.parent).filter(Boolean),
+      notes,
+      mySubjects,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function postStudentNote(req, res, next) {
+  try {
+    const teacherId = req.user.userId;
+    const schoolId = req.schoolId;
+    const { studentId } = req.params;
+    const { note } = req.body;
+
+    if (note && note.trim()) {
+      try {
+        await supabaseAdmin.from('teacher_notes').insert({
+          teacher_id: teacherId,
+          student_id: studentId,
+          school_id: schoolId,
+          note: note.trim(),
+        });
+        req.flash('success', 'Note saved.');
+      } catch (_) {
+        req.flash('error', 'Could not save note — please run the teacher_notes migration.');
+      }
+    }
+    res.redirect(`/teacher/students/${studentId}`);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   getMyClasses,
@@ -521,4 +758,7 @@ module.exports = {
   deleteTimetableEntry,
   getMessages,
   postMessage,
+  getStudents,
+  getStudentProfile,
+  postStudentNote,
 };

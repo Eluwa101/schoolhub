@@ -1,0 +1,158 @@
+<%- include('../partials/header') %>
+
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <h1 class="text-xl font-bold text-gray-900">Students</h1>
+
+  <!-- Class selector -->
+  <% if (classes.length) { %>
+  <form method="GET" action="/teacher/students" id="class-form" class="flex items-center gap-2 flex-wrap">
+    <select name="classId" onchange="document.getElementById('class-form').submit()"
+            class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-blue-400 outline-none">
+      <% classes.forEach(c => { %>
+        <option value="<%= c.id %>" <%= selectedClassId === c.id ? 'selected' : '' %>><%= c.name %></option>
+      <% }) %>
+    </select>
+    <% if (selectedSubjectId) { %>
+      <input type="hidden" name="subjectId" value="<%= selectedSubjectId %>" />
+    <% } %>
+  </form>
+  <% } %>
+</div>
+
+<% if (!classes.length) { %>
+  <div class="flex flex-col items-center justify-center py-20 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+      <svg class="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </div>
+    <p class="text-gray-500 font-medium">No classes assigned yet</p>
+    <p class="text-sm text-gray-400 mt-1">Contact your admin to be assigned to a class.</p>
+  </div>
+<% } else { %>
+
+<!-- Subject filter tabs -->
+<% if (subjectsForClass.length) { %>
+<div class="flex flex-wrap gap-2 mb-5">
+  <a href="/teacher/students?classId=<%= selectedClassId %>"
+     class="rounded-full px-3 py-1.5 text-xs font-semibold transition <%= !selectedSubjectId ? 'bg-blue-600 text-white shadow' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600' %>">
+    All Subjects
+  </a>
+  <% subjectsForClass.forEach(sub => { %>
+    <a href="/teacher/students?classId=<%= selectedClassId %>&subjectId=<%= sub.id %>"
+       class="rounded-full px-3 py-1.5 text-xs font-semibold transition <%= selectedSubjectId === sub.id ? 'bg-blue-600 text-white shadow' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600' %>">
+      <%= sub.name %>
+    </a>
+  <% }) %>
+</div>
+<% } %>
+
+<!-- Student table -->
+<% if (!students.length) { %>
+  <div class="rounded-[22px] border border-white/70 bg-white/90 backdrop-blur p-12 text-center">
+    <p class="text-gray-400">No students enrolled in this class yet.</p>
+  </div>
+<% } else { %>
+<div class="rounded-[22px] border border-white/70 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.25)] backdrop-blur overflow-hidden">
+  <!-- Desktop table -->
+  <table class="w-full hidden sm:table">
+    <thead>
+      <tr class="border-b border-gray-100 bg-gray-50/60">
+        <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Student</th>
+        <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <%= selectedSubjectId ? 'Subject Avg' : 'Avg Grade' %>
+        </th>
+        <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Attendance</th>
+        <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      <% students.forEach(student => { %>
+        <%
+          const gradeColor = student.avgGrade === null ? 'text-gray-400'
+            : student.avgGrade >= 75 ? 'text-green-600'
+            : student.avgGrade >= 50 ? 'text-yellow-600'
+            : 'text-red-600';
+          const attColor = student.attPct === null ? 'text-gray-400'
+            : student.attPct >= 80 ? 'text-green-600'
+            : student.attPct >= 60 ? 'text-yellow-600'
+            : 'text-red-600';
+        %>
+        <tr class="hover:bg-blue-50/30 transition group">
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3">
+              <% if (student.avatar_url) { %>
+                <img src="<%= student.avatar_url %>" class="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+              <% } else { %>
+                <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <span class="text-blue-700 font-bold text-sm"><%= student.first_name[0] %></span>
+                </div>
+              <% } %>
+              <div>
+                <p class="text-sm font-semibold text-gray-900"><%= student.first_name %> <%= student.last_name %></p>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3.5 text-center">
+            <span class="text-sm font-bold <%= gradeColor %>">
+              <%= student.avgGrade !== null ? student.avgGrade + '%' : '—' %>
+            </span>
+          </td>
+          <td class="px-4 py-3.5 text-center">
+            <span class="text-sm font-bold <%= attColor %>">
+              <%= student.attPct !== null ? student.attPct + '%' : '—' %>
+            </span>
+          </td>
+          <td class="px-5 py-3.5 text-right">
+            <a href="/teacher/students/<%= student.id %>"
+               class="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition">
+              View Profile
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <!-- Mobile cards -->
+  <div class="sm:hidden divide-y divide-gray-50">
+    <% students.forEach(student => { %>
+      <%
+        const gradeColor = student.avgGrade === null ? 'text-gray-400'
+          : student.avgGrade >= 75 ? 'text-green-600'
+          : student.avgGrade >= 50 ? 'text-yellow-600'
+          : 'text-red-600';
+        const attColor = student.attPct === null ? 'text-gray-400'
+          : student.attPct >= 80 ? 'text-green-600'
+          : student.attPct >= 60 ? 'text-yellow-600'
+          : 'text-red-600';
+      %>
+      <div class="p-4 flex items-center gap-4">
+        <% if (student.avatar_url) { %>
+          <img src="<%= student.avatar_url %>" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+        <% } else { %>
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <span class="text-blue-700 font-bold"><%= student.first_name[0] %></span>
+          </div>
+        <% } %>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-gray-900 text-sm"><%= student.first_name %> <%= student.last_name %></p>
+          <div class="flex gap-3 mt-1">
+            <span class="text-xs <%= gradeColor %>">Grade: <%= student.avgGrade !== null ? student.avgGrade + '%' : '—' %></span>
+            <span class="text-xs <%= attColor %>">Att: <%= student.attPct !== null ? student.attPct + '%' : '—' %></span>
+          </div>
+        </div>
+        <a href="/teacher/students/<%= student.id %>" class="text-blue-600 hover:text-blue-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
+<% } %>

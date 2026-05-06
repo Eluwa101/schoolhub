@@ -30,4 +30,8 @@ router.delete('/timetable/:id', ...teacherOnly, ctrl.deleteTimetableEntry);
 router.get('/messages', ...teacherOnly, ctrl.getMessages);
 router.post('/messages', ...teacherOnly, ctrl.postMessage);
 
+router.get('/students', ...teacherOnly, ctrl.getStudents);
+router.get('/students/:studentId', ...teacherOnly, ctrl.getStudentProfile);
+router.post('/students/:studentId/notes', ...teacherOnly, ctrl.postStudentNote);
+
 module.exports = router;

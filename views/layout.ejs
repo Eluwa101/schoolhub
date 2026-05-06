@@ -25,6 +25,7 @@
 </head>
 <body class="app-body font-inter text-gray-900 antialiased density-<%= schoolPreferences?.uiDensity || 'comfortable' %>">
 
+<%- include('partials/flash') %>
 <% if (typeof currentUser !== 'undefined' && currentUser) { %>
   <div class="pointer-events-none fixed inset-0 tenant-app-aurora"></div>
   <%- include('partials/navbar') %>
@@ -47,7 +48,6 @@
           </form>
         </div>
       <% } %>
-      <%- include('partials/flash') %>
       <div class="max-w-screen-xl mx-auto">
         <%- body %>
       </div>
@@ -55,7 +55,6 @@
   </div>
 <% } else { %>
   <main class="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top_right,_rgba(79,70,229,0.18),transparent_30%),linear-gradient(135deg,#eef2ff_0%,#eff6ff_48%,#f8fafc_100%)] px-4 py-10">
-    <%- include('partials/flash') %>
     <%- body %>
   </main>
 <% } %>

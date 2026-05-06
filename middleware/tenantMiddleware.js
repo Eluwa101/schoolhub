@@ -20,6 +20,7 @@ const BREADCRUMB_MAP = {
   '/teacher/assignments': [{ label: 'Dashboard', href: '/teacher/dashboard' }, { label: 'Assignments' }],
   '/teacher/messages':    [{ label: 'Dashboard', href: '/teacher/dashboard' }, { label: 'Messages' }],
   '/teacher/attendance':  [{ label: 'Dashboard', href: '/teacher/dashboard' }, { label: 'My Classes', href: '/teacher/classes' }, { label: 'Attendance' }],
+  '/teacher/students':    [{ label: 'Dashboard', href: '/teacher/dashboard' }, { label: 'Students' }],
 
   '/student/dashboard':      [{ label: 'Dashboard' }],
   '/student/timetable':      [{ label: 'Dashboard', href: '/student/dashboard' }, { label: 'Timetable' }],
